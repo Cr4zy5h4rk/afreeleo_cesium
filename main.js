@@ -21,6 +21,7 @@ const MISSION_CONFIG = {
   orbitalInclination: 14.7, // degrés
   carrierSpeed: 250, // m/s
   phaseDurations: {
+    pause: 100, // 10 secondes de pause avant décollage
     taxiing: 30, // 30 secondes de roulage
     takeoff: 60, // 1 minute de décollage
     climb: 120, // 2 minutes de montée vers 12km
@@ -263,6 +264,7 @@ viewer.entities.add({
 // Configuration temporelle
 const startTime = Cesium.JulianDate.now();
 const totalMissionTime =
+  MISSION_CONFIG.phaseDurations.pause +
   MISSION_CONFIG.phaseDurations.taxiing +
   MISSION_CONFIG.phaseDurations.takeoff +
   MISSION_CONFIG.phaseDurations.climb +
@@ -299,6 +301,24 @@ function createCarrierPhase() {
   );
 
   let currentTime = 0;
+
+  // PHASE 0: PAUSE (Avion à vitesse très faible au début de la piste)
+  const pauseDuration = MISSION_CONFIG.phaseDurations.pause;
+  for (let t = 0; t <= pauseDuration; t += 1) {
+    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
+    const progress = t / pauseDuration;
+
+    // Avance très lentement (5% de la piste pendant la pause)
+    const lon = MISSION_CONFIG.runway.start.lon +
+                (MISSION_CONFIG.runway.end.lon - MISSION_CONFIG.runway.start.lon) * progress * 0.05;
+    const lat = MISSION_CONFIG.runway.start.lat +
+                (MISSION_CONFIG.runway.end.lat - MISSION_CONFIG.runway.start.lat) * progress * 0.05;
+    const altitude = 0;
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
+    carrierPositions.addSample(time, position);
+  }
+  currentTime += pauseDuration;
 
   // PHASE 1: TAXIING (Roulage au sol sur la piste)
   const taxiingDuration = MISSION_CONFIG.phaseDurations.taxiing;
@@ -381,7 +401,7 @@ function createCarrierPhase() {
   }
   
   const totalCarrierDuration =
-    taxiingDuration + takeoffDuration + climbDuration + cruiseDuration;
+    pauseDuration + taxiingDuration + takeoffDuration + climbDuration + cruiseDuration;
 
   const carrier = viewer.entities.add({
     id: "carrier-aircraft",
@@ -418,11 +438,13 @@ function createCarrierPhase() {
     label: {
       text: new Cesium.CallbackProperty(function (time) {
         const currentSeconds = Cesium.JulianDate.secondsDifference(time, startTime);
-        if (currentSeconds <= taxiingDuration) {
+        if (currentSeconds <= pauseDuration) {
+          return "⏸️ PAUSE - Préparation au décollage";
+        } else if (currentSeconds <= pauseDuration + taxiingDuration) {
           return "🛬 TAXIING - Roulage sur piste";
-        } else if (currentSeconds <= taxiingDuration + takeoffDuration) {
+        } else if (currentSeconds <= pauseDuration + taxiingDuration + takeoffDuration) {
           return "🛫 TAKEOFF - Décollage";
-        } else if (currentSeconds <= taxiingDuration + takeoffDuration + climbDuration) {
+        } else if (currentSeconds <= pauseDuration + taxiingDuration + takeoffDuration + climbDuration) {
           return "⬆️ CLIMB - Montée vers 12km";
         } else {
           return "✈️ CRUISE - Croisière à 12km";
@@ -457,6 +479,7 @@ function createCarrierPhase() {
 function createLaunchPhase(carrierFinalPosition) {
   const launchPositions = new Cesium.SampledPositionProperty();
   const phaseStart =
+    MISSION_CONFIG.phaseDurations.pause +
     MISSION_CONFIG.phaseDurations.taxiing +
     MISSION_CONFIG.phaseDurations.takeoff +
     MISSION_CONFIG.phaseDurations.climb +
@@ -553,6 +576,7 @@ function createLaunchPhase(carrierFinalPosition) {
 function createOrbitPhase(launchFinalPosition) {
   const orbitPositions = new Cesium.SampledPositionProperty();
   const phaseStart =
+    MISSION_CONFIG.phaseDurations.pause +
     MISSION_CONFIG.phaseDurations.taxiing +
     MISSION_CONFIG.phaseDurations.takeoff +
     MISSION_CONFIG.phaseDurations.climb +
@@ -658,6 +682,7 @@ function createOrbitPhase(launchFinalPosition) {
 function createDeorbitPhase(orbitFinalPosition) {
   const deorbitPositions = new Cesium.SampledPositionProperty();
   const phaseStart =
+    MISSION_CONFIG.phaseDurations.pause +
     MISSION_CONFIG.phaseDurations.taxiing +
     MISSION_CONFIG.phaseDurations.takeoff +
     MISSION_CONFIG.phaseDurations.climb +
@@ -766,20 +791,35 @@ createDeorbitPhase(orbitPath);
 // Ajouter les satellites réels
 addRealSatellites();
 
-// Caméra initiale sur Dakar
-viewer.camera.flyTo({
-  destination: Cesium.Cartesian3.fromDegrees(
-    MISSION_CONFIG.launchSite.lon,
-    MISSION_CONFIG.launchSite.lat,
-    5000000
-  ),
-  orientation: {
-    heading: Cesium.Math.toRadians(0),
-    pitch: Cesium.Math.toRadians(-60),
-    roll: 0.0,
-  },
-  duration: 3,
+// Suivre l'avion avec la caméra
+const aircraft = viewer.entities.getById("carrier-aircraft");
+viewer.trackedEntity = aircraft;
+
+// Configurer la vue de la caméra derrière l'avion
+viewer.trackedEntityChanged.addEventListener(function() {
+  if (viewer.trackedEntity === aircraft) {
+    viewer.scene.screenSpaceCameraController.enableRotate = true;
+    viewer.scene.screenSpaceCameraController.enableZoom = true;
+  }
 });
+
+// Positionner la caméra derrière l'avion après un court délai
+setTimeout(function() {
+  if (viewer.trackedEntity === aircraft) {
+    const position = aircraft.position.getValue(viewer.clock.currentTime);
+    if (position) {
+      // Vue derrière l'avion : 100m en arrière, 30m en hauteur
+      viewer.camera.lookAt(
+        position,
+        new Cesium.HeadingPitchRange(
+          0, // heading (direction)
+          Cesium.Math.toRadians(-10), // pitch (angle vers le bas)
+          100 // distance en mètres
+        )
+      );
+    }
+  }
+}, 100);
 
 // Afficher les informations de mission
 console.log("=".repeat(60));
