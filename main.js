@@ -11,12 +11,20 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
 // Paramètres de la mission AFREELEO
 const MISSION_CONFIG = {
   launchSite: { lon: -17.477989, lat: 14.733128 }, // Dakar
+  // Piste de l'aéroport Dakar (départ et arrivée)
+  runway: {
+    start: { lon: -17.476988, lat: 14.726596 }, // Début de piste
+    end: { lon: -17.480808, lat: 14.755731 },   // Fin de piste
+  },
   carrierAltitude: 12000, // 12 km
   targetAltitude: 400000, // 400 km LEO
   orbitalInclination: 14.7, // degrés
   carrierSpeed: 250, // m/s
   phaseDurations: {
-    carrier: 180, // 3 minutes
+    taxiing: 30, // 30 secondes de roulage
+    takeoff: 60, // 1 minute de décollage
+    climb: 120, // 2 minutes de montée vers 12km
+    cruise: 60, // 1 minute de croisière à 12km
     launch: 300, // 5 minutes
     orbit: 5400, // 90 minutes (1 orbite complète)
     deorbit: 172800, // 48 heures
@@ -180,43 +188,85 @@ function addRealSatellites() {
 // PARTIE 2: SIMULATION MISSION AFREELEO
 // ============================================
 
-// Site de lancement Dakar - Aéroport
+// Piste de l'aéroport Dakar
 viewer.entities.add({
-  name: "Dakar Launch Site - AFREELEO",
+  name: "Runway - Dakar Airport",
+  polyline: {
+    positions: Cesium.Cartesian3.fromDegreesArray([
+      MISSION_CONFIG.runway.start.lon, MISSION_CONFIG.runway.start.lat,
+      MISSION_CONFIG.runway.end.lon, MISSION_CONFIG.runway.end.lat,
+    ]),
+    width: 20,
+    material: new Cesium.PolylineOutlineMaterialProperty({
+      color: Cesium.Color.WHITE.withAlpha(0.8),
+      outlineWidth: 2,
+      outlineColor: Cesium.Color.YELLOW,
+    }),
+    clampToGround: true,
+  },
+});
+
+// Marqueur début de piste
+viewer.entities.add({
+  name: "Runway Start",
   position: Cesium.Cartesian3.fromDegrees(
-    MISSION_CONFIG.launchSite.lon,
-    MISSION_CONFIG.launchSite.lat,
-    0 // Au niveau du sol
+    MISSION_CONFIG.runway.start.lon,
+    MISSION_CONFIG.runway.start.lat,
+    0
   ),
-  label: {
-    text: "🛫 DAKAR LAUNCH SITE - AIRPORT",
-    font: "16pt monospace",
-    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-    outlineWidth: 3,
-    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-    pixelOffset: new Cesium.Cartesian2(0, -100),
-    fillColor: Cesium.Color.YELLOW,
-    showBackground: true,
-    backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
-  },
-  model: {
-    uri: "./airport.glb",
-    minimumPixelSize: 64,
-    maximumScale: 5000,
-    scale: 10,
-  },
   point: {
-    pixelSize: 20,
-    color: Cesium.Color.YELLOW,
-    outlineColor: Cesium.Color.ORANGE,
-    outlineWidth: 3,
+    pixelSize: 15,
+    color: Cesium.Color.GREEN,
+    outlineColor: Cesium.Color.WHITE,
+    outlineWidth: 2,
+  },
+  label: {
+    text: "🛫 RUNWAY START",
+    font: "12pt monospace",
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    outlineWidth: 2,
+    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    pixelOffset: new Cesium.Cartesian2(0, -20),
+    fillColor: Cesium.Color.GREEN,
+    showBackground: true,
+    backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+  },
+});
+
+// Marqueur fin de piste
+viewer.entities.add({
+  name: "Runway End",
+  position: Cesium.Cartesian3.fromDegrees(
+    MISSION_CONFIG.runway.end.lon,
+    MISSION_CONFIG.runway.end.lat,
+    0
+  ),
+  point: {
+    pixelSize: 15,
+    color: Cesium.Color.RED,
+    outlineColor: Cesium.Color.WHITE,
+    outlineWidth: 2,
+  },
+  label: {
+    text: "🛫 TAKEOFF POINT",
+    font: "12pt monospace",
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    outlineWidth: 2,
+    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    pixelOffset: new Cesium.Cartesian2(0, -20),
+    fillColor: Cesium.Color.RED,
+    showBackground: true,
+    backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
   },
 });
 
 // Configuration temporelle
 const startTime = Cesium.JulianDate.now();
 const totalMissionTime =
-  MISSION_CONFIG.phaseDurations.carrier +
+  MISSION_CONFIG.phaseDurations.taxiing +
+  MISSION_CONFIG.phaseDurations.takeoff +
+  MISSION_CONFIG.phaseDurations.climb +
+  MISSION_CONFIG.phaseDurations.cruise +
   MISSION_CONFIG.phaseDurations.launch +
   MISSION_CONFIG.phaseDurations.orbit +
   MISSION_CONFIG.phaseDurations.deorbit;
@@ -241,38 +291,98 @@ viewer.timeline.zoomTo(startTime, stopTime);
 
 function createCarrierPhase() {
   const carrierPositions = new Cesium.SampledPositionProperty();
-  const duration = MISSION_CONFIG.phaseDurations.carrier;
 
-  for (let t = 0; t <= duration; t += 5) {
-    const time = Cesium.JulianDate.addSeconds(startTime, t, new Cesium.JulianDate());
+  // Calcul de la direction de la piste
+  const runwayHeading = Math.atan2(
+    MISSION_CONFIG.runway.end.lat - MISSION_CONFIG.runway.start.lat,
+    MISSION_CONFIG.runway.end.lon - MISSION_CONFIG.runway.start.lon
+  );
 
-    // Trajectoire: décollage vers l'ouest (mer/océan Atlantique) et montée vers 12km
-    const progress = t / duration;
+  let currentTime = 0;
 
-    // Phase de décollage et montée progressive
-    let altitude, lon, lat;
+  // PHASE 1: TAXIING (Roulage au sol sur la piste)
+  const taxiingDuration = MISSION_CONFIG.phaseDurations.taxiing;
+  for (let t = 0; t <= taxiingDuration; t += 1) {
+    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
+    const progress = t / taxiingDuration;
 
-    if (progress < 0.1) {
-      // Phase de décollage (0-10%): montée rapide initiale
-      const takeoffProgress = progress / 0.1;
-      altitude = takeoffProgress * 1500; // Montée à 1.5km
-      lon = MISSION_CONFIG.launchSite.lon - takeoffProgress * 0.5; // Vers l'ouest
-      lat = MISSION_CONFIG.launchSite.lat + takeoffProgress * 0.1; // Légère déviation nord
-    } else {
-      // Phase de croisière (10-100%): montée progressive vers 12km
-      const cruiseProgress = (progress - 0.1) / 0.9;
-      altitude = 1500 + cruiseProgress * (MISSION_CONFIG.carrierAltitude - 1500);
+    // Interpolation linéaire entre début et fin de piste
+    const lon = MISSION_CONFIG.runway.start.lon +
+                (MISSION_CONFIG.runway.end.lon - MISSION_CONFIG.runway.start.lon) * progress;
+    const lat = MISSION_CONFIG.runway.start.lat +
+                (MISSION_CONFIG.runway.end.lat - MISSION_CONFIG.runway.start.lat) * progress;
+    const altitude = 0; // Au sol
 
-      // Trajectoire réaliste vers l'ouest au-dessus de l'océan
-      const distance = cruiseProgress * 150; // 150 km vers l'ouest
-      lon = MISSION_CONFIG.launchSite.lon - distance * 0.06; // Vers l'ouest (négatif)
-      lat = MISSION_CONFIG.launchSite.lat + distance * 0.02; // Légère inclinaison nord-ouest
-    }
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
+    carrierPositions.addSample(time, position);
+  }
+  currentTime += taxiingDuration;
+
+  // PHASE 2: TAKEOFF (Décollage)
+  const takeoffDuration = MISSION_CONFIG.phaseDurations.takeoff;
+  const rotationSpeed = 80; // m/s vitesse de rotation
+  const takeoffAngle = 15; // Angle de décollage en degrés
+
+  for (let t = 0; t <= takeoffDuration; t += 1) {
+    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
+    const progress = t / takeoffDuration;
+
+    // Distance parcourue pendant le décollage (accélération)
+    const distance = progress * 5; // 5 km de distance horizontale
+    const lon = MISSION_CONFIG.runway.end.lon + Math.cos(runwayHeading) * distance * 0.01;
+    const lat = MISSION_CONFIG.runway.end.lat + Math.sin(runwayHeading) * distance * 0.01;
+
+    // Altitude avec courbe de décollage réaliste
+    const altitude = Math.pow(progress, 1.5) * 3000; // Montée progressive jusqu'à 3km
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
+    carrierPositions.addSample(time, position);
+  }
+  currentTime += takeoffDuration;
+
+  // PHASE 3: CLIMB (Montée vers 12km)
+  const climbDuration = MISSION_CONFIG.phaseDurations.climb;
+  const climbStartLon = MISSION_CONFIG.runway.end.lon + Math.cos(runwayHeading) * 0.05;
+  const climbStartLat = MISSION_CONFIG.runway.end.lat + Math.sin(runwayHeading) * 0.05;
+
+  for (let t = 0; t <= climbDuration; t += 2) {
+    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
+    const progress = t / climbDuration;
+
+    // Continuation vers l'ouest au-dessus de l'océan
+    const distance = progress * 30; // 30 km vers l'ouest
+    const lon = climbStartLon + Math.cos(runwayHeading) * distance * 0.01;
+    const lat = climbStartLat + Math.sin(runwayHeading) * distance * 0.01;
+
+    // Montée progressive de 3km à 12km
+    const altitude = 3000 + progress * (MISSION_CONFIG.carrierAltitude - 3000);
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
+    carrierPositions.addSample(time, position);
+  }
+  currentTime += climbDuration;
+
+  // PHASE 4: CRUISE (Croisière à 12km)
+  const cruiseDuration = MISSION_CONFIG.phaseDurations.cruise;
+  const cruiseStartLon = climbStartLon + Math.cos(runwayHeading) * 0.3;
+  const cruiseStartLat = climbStartLat + Math.sin(runwayHeading) * 0.3;
+
+  for (let t = 0; t <= cruiseDuration; t += 2) {
+    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
+    const progress = t / cruiseDuration;
+
+    const distance = progress * 20; // 20 km en croisière
+    const lon = cruiseStartLon + Math.cos(runwayHeading) * distance * 0.01;
+    const lat = cruiseStartLat + Math.sin(runwayHeading) * distance * 0.01;
+    const altitude = MISSION_CONFIG.carrierAltitude; // Altitude constante
 
     const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
     carrierPositions.addSample(time, position);
   }
   
+  const totalCarrierDuration =
+    taxiingDuration + takeoffDuration + climbDuration + cruiseDuration;
+
   const carrier = viewer.entities.add({
     id: "carrier-aircraft",
     name: "Avion Porteur A380",
@@ -281,7 +391,7 @@ function createCarrierPhase() {
         start: startTime,
         stop: Cesium.JulianDate.addSeconds(
           startTime,
-          duration,
+          totalCarrierDuration,
           new Cesium.JulianDate()
         ),
       }),
@@ -301,12 +411,23 @@ function createCarrierPhase() {
     }, false),
     model: {
       uri: "./airbus_a380.glb",
-      minimumPixelSize: 32,
-      maximumScale: 2000,
-      scale: 50,
+      minimumPixelSize: 8,
+      maximumScale: 200,
+      scale: 0.6,
     },
     label: {
-      text: "✈️ PHASE 1: AVION PORTEUR (12km)",
+      text: new Cesium.CallbackProperty(function (time) {
+        const currentSeconds = Cesium.JulianDate.secondsDifference(time, startTime);
+        if (currentSeconds <= taxiingDuration) {
+          return "🛬 TAXIING - Roulage sur piste";
+        } else if (currentSeconds <= taxiingDuration + takeoffDuration) {
+          return "🛫 TAKEOFF - Décollage";
+        } else if (currentSeconds <= taxiingDuration + takeoffDuration + climbDuration) {
+          return "⬆️ CLIMB - Montée vers 12km";
+        } else {
+          return "✈️ CRUISE - Croisière à 12km";
+        }
+      }, false),
       font: "14pt monospace",
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
       outlineWidth: 2,
@@ -335,7 +456,11 @@ function createCarrierPhase() {
 
 function createLaunchPhase(carrierFinalPosition) {
   const launchPositions = new Cesium.SampledPositionProperty();
-  const phaseStart = MISSION_CONFIG.phaseDurations.carrier;
+  const phaseStart =
+    MISSION_CONFIG.phaseDurations.taxiing +
+    MISSION_CONFIG.phaseDurations.takeoff +
+    MISSION_CONFIG.phaseDurations.climb +
+    MISSION_CONFIG.phaseDurations.cruise;
   const duration = MISSION_CONFIG.phaseDurations.launch;
 
   // Position finale exacte de l'avion porteur
@@ -428,7 +553,11 @@ function createLaunchPhase(carrierFinalPosition) {
 function createOrbitPhase(launchFinalPosition) {
   const orbitPositions = new Cesium.SampledPositionProperty();
   const phaseStart =
-    MISSION_CONFIG.phaseDurations.carrier + MISSION_CONFIG.phaseDurations.launch;
+    MISSION_CONFIG.phaseDurations.taxiing +
+    MISSION_CONFIG.phaseDurations.takeoff +
+    MISSION_CONFIG.phaseDurations.climb +
+    MISSION_CONFIG.phaseDurations.cruise +
+    MISSION_CONFIG.phaseDurations.launch;
   const duration = MISSION_CONFIG.phaseDurations.orbit;
 
   // Position finale exacte du lanceur
@@ -529,7 +658,10 @@ function createOrbitPhase(launchFinalPosition) {
 function createDeorbitPhase(orbitFinalPosition) {
   const deorbitPositions = new Cesium.SampledPositionProperty();
   const phaseStart =
-    MISSION_CONFIG.phaseDurations.carrier +
+    MISSION_CONFIG.phaseDurations.taxiing +
+    MISSION_CONFIG.phaseDurations.takeoff +
+    MISSION_CONFIG.phaseDurations.climb +
+    MISSION_CONFIG.phaseDurations.cruise +
     MISSION_CONFIG.phaseDurations.launch +
     MISSION_CONFIG.phaseDurations.orbit;
   const duration = MISSION_CONFIG.phaseDurations.deorbit;
