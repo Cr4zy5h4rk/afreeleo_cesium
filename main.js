@@ -515,8 +515,12 @@ function createCarrierPhase() {
 async function loadGMATTrajectories() {
   try {
     // Charger les données du satellite
-    const satelliteResponse = await fetch('./mission_d3df0e1f_satellite.txt');
+    const satelliteResponse = await fetch('./mission_38baa6d1_satellite.txt');
     const satelliteData = await satelliteResponse.text();
+
+    // Charger les données de l'upperstage
+    const upperstageResponse = await fetch('./mission_38baa6d1_upperstage.txt');
+    const upperstageData = await upperstageResponse.text();
 
     // Parser les données du satellite
     const satelliteLines = satelliteData.split('\n').slice(1); // Skip header
@@ -585,7 +589,50 @@ async function loadGMATTrajectories() {
     const firstTime = Cesium.JulianDate.addSeconds(gmatStartTime, minElapsed, new Cesium.JulianDate());
     const lastTime = Cesium.JulianDate.addSeconds(gmatStartTime, maxElapsed, new Cesium.JulianDate());
 
-    console.log(`📊 ${count} points de trajectoire chargés depuis GMAT`);
+    console.log(`📊 ${count} points de trajectoire satellite chargés depuis GMAT`);
+
+    // Parser les données de l'upperstage
+    const upperstageLines = upperstageData.split('\n').slice(1);
+    const upperstagePositions = new Cesium.SampledPositionProperty();
+
+    let upperstageCount = 0;
+    let upperstageDataPoints = [];
+
+    upperstageLines.forEach(line => {
+      if (line.trim()) {
+        const parts = line.trim().split(/\s+/);
+        // Format: Date(4 parts) ElapsedSecs Altitude FuelMass TotalMass
+        if (parts.length >= 7) {
+          const elapsedSecs = parseFloat(parts[4]);
+          const altitudeKm = parseFloat(parts[5]);
+
+          if (!isNaN(elapsedSecs) && !isNaN(altitudeKm)) {
+            upperstageDataPoints.push({
+              elapsedSecs,
+              altitude: altitudeKm * 1000
+            });
+          }
+        }
+      }
+    });
+
+    // Trier par temps
+    upperstageDataPoints.sort((a, b) => a.elapsedSecs - b.elapsedSecs);
+
+    // Combiner avec les positions du satellite (même lat/lon, altitude de l'upperstage)
+    upperstageDataPoints.forEach(upperData => {
+      // Trouver la position satellite correspondante
+      const satData = dataPoints.find(d => Math.abs(d.elapsedSecs - upperData.elapsedSecs) < 10);
+
+      if (satData) {
+        const time = Cesium.JulianDate.addSeconds(gmatStartTime, upperData.elapsedSecs, new Cesium.JulianDate());
+        const position = Cesium.Cartesian3.fromDegrees(satData.longitude, satData.latitude, upperData.altitude);
+        upperstagePositions.addSample(time, position);
+        upperstageCount++;
+      }
+    });
+
+    console.log(`📊 ${upperstageCount} points de trajectoire upperstage chargés depuis GMAT`);
 
     if (count > 0) {
       console.log(`📊 Période de disponibilité: ${Cesium.JulianDate.toIso8601(firstTime)} à ${Cesium.JulianDate.toIso8601(lastTime)}`);
@@ -629,6 +676,59 @@ async function loadGMATTrajectories() {
       });
 
       console.log('✅ Trajectoire GMAT satellite chargée avec succès!');
+
+      // Afficher l'upperstage si disponible
+      if (upperstageCount > 0) {
+        viewer.entities.add({
+          id: 'gmat-upperstage',
+          name: 'Falcon 9 Second Stage (GMAT)',
+          availability: new Cesium.TimeIntervalCollection([
+            new Cesium.TimeInterval({
+              start: firstTime,
+              stop: lastTime,
+            }),
+          ]),
+          position: upperstagePositions,
+          orientation: new Cesium.CallbackProperty(function (time, result) {
+            const velocity = new Cesium.VelocityOrientationProperty(upperstagePositions).getValue(time);
+            if (velocity) {
+              // Rotation de 90 degrés autour de l'axe Z pour aligner avec la trajectoire
+              const rotationY = Cesium.Quaternion.fromAxisAngle(
+                Cesium.Cartesian3.UNIT_Y,
+                Cesium.Math.toRadians(90)
+              );
+              return Cesium.Quaternion.multiply(velocity, rotationY, result);
+            }
+            return result;
+          }, false),
+          model: {
+            uri: './falcon_9_second_stage.glb',
+            minimumPixelSize: 64,
+            maximumScale: 20000,
+            scale: 2000,
+          },
+          label: {
+            text: '🚀 FALCON 9 STAGE 2',
+            font: '14pt monospace',
+            fillColor: Cesium.Color.ORANGE,
+            showBackground: true,
+            backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
+            pixelOffset: new Cesium.Cartesian2(0, -60),
+          },
+          path: {
+            resolution: 1,
+            material: new Cesium.PolylineGlowMaterialProperty({
+              glowPower: 0.4,
+              color: Cesium.Color.ORANGE,
+            }),
+            width: 5,
+            leadTime: 3600,
+            trailTime: 3600,
+          },
+        });
+
+        console.log('✅ Trajectoire GMAT Falcon 9 second stage chargée avec succès!');
+      }
 
       // Zoomer sur le satellite après 2 secondes
       setTimeout(() => {
