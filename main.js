@@ -13,9 +13,10 @@ const MISSION_CONFIG = {
   launchSite: { lon: -17.477989, lat: 14.733128 }, // Dakar
   // Piste de l'aéroport Dakar (départ et arrivée)
   runway: {
-    start: { lon: -17.476988, lat: 14.726596 }, // Début de piste
-    end: { lon: -17.480808, lat: 14.755731 },   // Fin de piste
-  },
+
+    start: { lat: 14.686448, lon: -17.072957 }, // Début de piste
+    end: { lat: 14.660182, lon: -17.072747 },   // Fin de piste
+  },
   carrierAltitude: 12000, // 12 km
   targetAltitude: 400000, // 400 km LEO
   orbitalInclination: 14.7, // degrés
@@ -25,7 +26,7 @@ const MISSION_CONFIG = {
     taxiing: 30, // 30 secondes de roulage
     takeoff: 60, // 1 minute de décollage
     climb: 120, // 2 minutes de montée vers 12km
-    cruise: 60, // 1 minute de croisière à 12km
+    cruise: 600, // 10 minutes de croisière vers destination
     launch: 300, // 5 minutes
     orbit: 5400, // 90 minutes (1 orbite complète)
     deorbit: 172800, // 48 heures
@@ -360,19 +361,33 @@ function createCarrierPhase() {
   }
   currentTime += takeoffDuration;
 
-  // PHASE 3: CLIMB (Montée vers 12km)
+  // PHASE 3: CLIMB (Montée vers 12km avec début de virage)
   const climbDuration = MISSION_CONFIG.phaseDurations.climb;
   const climbStartLon = MISSION_CONFIG.runway.end.lon + Math.cos(runwayHeading) * 0.05;
   const climbStartLat = MISSION_CONFIG.runway.end.lat + Math.sin(runwayHeading) * 0.05;
+
+  // Destination finale
+  const targetLon = 1.194030;
+  const targetLat = -13.346754;
 
   for (let t = 0; t <= climbDuration; t += 2) {
     const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
     const progress = t / climbDuration;
 
-    // Continuation vers l'ouest au-dessus de l'océan
-    const distance = progress * 30; // 30 km vers l'ouest
-    const lon = climbStartLon + Math.cos(runwayHeading) * distance * 0.01;
-    const lat = climbStartLat + Math.sin(runwayHeading) * distance * 0.01;
+    // Début du virage progressif vers la destination
+    const turnProgress = Math.pow(progress, 2); // Virage progressif
+    const distance = progress * 30; // 30 km
+
+    // Calcul de la direction vers la cible
+    const deltaLon = targetLon - climbStartLon;
+    const deltaLat = targetLat - climbStartLat;
+    const targetHeading = Math.atan2(deltaLat, deltaLon);
+
+    // Interpolation progressive entre le cap de piste et le cap vers la cible
+    const currentHeading = runwayHeading + (targetHeading - runwayHeading) * turnProgress;
+
+    const lon = climbStartLon + Math.cos(currentHeading) * distance * 0.01;
+    const lat = climbStartLat + Math.sin(currentHeading) * distance * 0.01;
 
     // Montée progressive de 3km à 12km
     const altitude = 3000 + progress * (MISSION_CONFIG.carrierAltitude - 3000);
@@ -382,18 +397,39 @@ function createCarrierPhase() {
   }
   currentTime += climbDuration;
 
-  // PHASE 4: CRUISE (Croisière à 12km)
+  // PHASE 4: CRUISE (Croisière vers la destination avec courbe de Bézier)
   const cruiseDuration = MISSION_CONFIG.phaseDurations.cruise;
-  const cruiseStartLon = climbStartLon + Math.cos(runwayHeading) * 0.3;
-  const cruiseStartLat = climbStartLat + Math.sin(runwayHeading) * 0.3;
+  const cruiseStartLon = climbStartLon + Math.cos(runwayHeading + (Math.atan2(targetLat - climbStartLat, targetLon - climbStartLon) - runwayHeading)) * 0.3;
+  const cruiseStartLat = climbStartLat + Math.sin(runwayHeading + (Math.atan2(targetLat - climbStartLat, targetLon - climbStartLon) - runwayHeading)) * 0.3;
 
-  for (let t = 0; t <= cruiseDuration; t += 2) {
+  // Points de contrôle pour une courbe de Bézier cubique réaliste
+  const deltaLon = targetLon - cruiseStartLon;
+  const deltaLat = targetLat - cruiseStartLat;
+
+  // Point de contrôle 1: 1/3 du chemin avec légère déviation
+  const cp1Lon = cruiseStartLon + deltaLon * 0.33 - 2;
+  const cp1Lat = cruiseStartLat + deltaLat * 0.33 + 1;
+
+  // Point de contrôle 2: 2/3 du chemin avec légère déviation opposée
+  const cp2Lon = cruiseStartLon + deltaLon * 0.67 - 1;
+  const cp2Lat = cruiseStartLat + deltaLat * 0.67 - 0.5;
+
+  for (let t = 0; t <= cruiseDuration; t += 5) {
     const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
     const progress = t / cruiseDuration;
 
-    const distance = progress * 20; // 20 km en croisière
-    const lon = cruiseStartLon + Math.cos(runwayHeading) * distance * 0.01;
-    const lat = cruiseStartLat + Math.sin(runwayHeading) * distance * 0.01;
+    // Courbe de Bézier cubique pour un virage fluide et réaliste
+    const t1 = 1 - progress;
+    const lon = Math.pow(t1, 3) * cruiseStartLon +
+                3 * Math.pow(t1, 2) * progress * cp1Lon +
+                3 * t1 * Math.pow(progress, 2) * cp2Lon +
+                Math.pow(progress, 3) * targetLon;
+
+    const lat = Math.pow(t1, 3) * cruiseStartLat +
+                3 * Math.pow(t1, 2) * progress * cp1Lat +
+                3 * t1 * Math.pow(progress, 2) * cp2Lat +
+                Math.pow(progress, 3) * targetLat;
+
     const altitude = MISSION_CONFIG.carrierAltitude; // Altitude constante
 
     const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
@@ -473,7 +509,156 @@ function createCarrierPhase() {
 }
 
 // ============================================
-// PHASE 2: LARGAGE ET ASCENSION
+// CHARGEMENT DES DONNÉES GMAT
+// ============================================
+
+async function loadGMATTrajectories() {
+  try {
+    // Charger les données du satellite
+    const satelliteResponse = await fetch('./mission_d3df0e1f_satellite.txt');
+    const satelliteData = await satelliteResponse.text();
+
+    // Parser les données du satellite
+    const satelliteLines = satelliteData.split('\n').slice(1); // Skip header
+    const satellitePositions = new Cesium.SampledPositionProperty();
+
+    // Utiliser le même temps de départ que la simulation Boeing
+    const gmatStartTime = startTime.clone();
+
+    let count = 0;
+    let minElapsed = Infinity;
+    let maxElapsed = -Infinity;
+
+    // Collecter toutes les données d'abord
+    const dataPoints = [];
+
+    let lineCount = 0;
+    satelliteLines.forEach(line => {
+      if (line.trim()) {
+        const parts = line.trim().split(/\s+/);
+        // Format: Date Month Year Time (4 parts) + ElapsedSecs Altitude Latitude Longitude VX VY VZ
+        // Index:  0    1     2    3       4         5           6        7         8          9  10
+        if (parts.length >= 11) {
+          const elapsedSecs = parseFloat(parts[4]); // Colonne 4 après la date
+          const altitudeKm = parseFloat(parts[5]); // Altitude au-dessus de la surface en km
+          const altitude = altitudeKm * 1000; // km vers m
+          const latitude = parseFloat(parts[6]);
+          const longitude = parseFloat(parts[7]);
+
+          // Log première ligne pour debug
+          if (lineCount === 0) {
+            console.log('🔍 Debug première ligne:');
+            console.log('  Date:', parts[0], parts[1], parts[2], parts[3]);
+            console.log('  ElapsedSecs (parts[4]):', parts[4], '→', elapsedSecs, 's');
+            console.log('  Altitude (parts[5]):', parts[5], 'km →', altitude, 'm au-dessus de la surface');
+            console.log('  Latitude (parts[6]):', parts[6], '→', latitude, '°');
+            console.log('  Longitude (parts[7]):', parts[7], '→', longitude, '°');
+          }
+
+          if (!isNaN(elapsedSecs) && !isNaN(altitude) && !isNaN(latitude) && !isNaN(longitude)) {
+            dataPoints.push({
+              elapsedSecs,
+              altitude,
+              latitude,
+              longitude
+            });
+
+            minElapsed = Math.min(minElapsed, elapsedSecs);
+            maxElapsed = Math.max(maxElapsed, elapsedSecs);
+          }
+          lineCount++;
+        }
+      }
+    });
+
+    // Trier par temps croissant
+    dataPoints.sort((a, b) => a.elapsedSecs - b.elapsedSecs);
+
+    // Ajouter les positions triées
+    dataPoints.forEach(data => {
+      const time = Cesium.JulianDate.addSeconds(gmatStartTime, data.elapsedSecs, new Cesium.JulianDate());
+      const position = Cesium.Cartesian3.fromDegrees(data.longitude, data.latitude, data.altitude);
+      satellitePositions.addSample(time, position);
+      count++;
+    });
+
+    const firstTime = Cesium.JulianDate.addSeconds(gmatStartTime, minElapsed, new Cesium.JulianDate());
+    const lastTime = Cesium.JulianDate.addSeconds(gmatStartTime, maxElapsed, new Cesium.JulianDate());
+
+    console.log(`📊 ${count} points de trajectoire chargés depuis GMAT`);
+
+    if (count > 0) {
+      console.log(`📊 Période de disponibilité: ${Cesium.JulianDate.toIso8601(firstTime)} à ${Cesium.JulianDate.toIso8601(lastTime)}`);
+
+      // Afficher le satellite GMAT avec availability
+      const satEntity = viewer.entities.add({
+        id: 'gmat-satellite',
+        name: 'AFREELEO Satellite (GMAT)',
+        availability: new Cesium.TimeIntervalCollection([
+          new Cesium.TimeInterval({
+            start: firstTime,
+            stop: lastTime,
+          }),
+        ]),
+        position: satellitePositions,
+        orientation: new Cesium.VelocityOrientationProperty(satellitePositions),
+        model: {
+          uri: './satellite_modul.glb',
+          minimumPixelSize: 128,
+          maximumScale: 50000,
+          scale: 5000,
+        },
+        label: {
+          text: '🛰️ SATELLITE GMAT',
+          font: '16pt monospace',
+          fillColor: Cesium.Color.LIME,
+          showBackground: true,
+          backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
+          pixelOffset: new Cesium.Cartesian2(0, -60),
+        },
+        path: {
+          resolution: 1,
+          material: new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.4,
+            color: Cesium.Color.LIME,
+          }),
+          width: 6,
+          leadTime: 3600,
+          trailTime: 3600,
+        },
+      });
+
+      console.log('✅ Trajectoire GMAT satellite chargée avec succès!');
+
+      // Zoomer sur le satellite après 2 secondes
+      setTimeout(() => {
+        // Tester avec le premier temps disponible
+        const testPos = satellitePositions.getValue(firstTime);
+        console.log('📍 Position au premier temps:', testPos);
+
+        if (testPos) {
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(161.2363, 0.1509, 700000),
+            duration: 3,
+            complete: () => {
+              console.log('📍 Caméra positionnée sur le satellite GMAT');
+              console.log('💡 Le satellite apparaîtra quand tu démarres la simulation');
+            }
+          });
+        }
+      }, 2000);
+    } else {
+      console.error('❌ Aucun point de trajectoire chargé!');
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur lors du chargement des données GMAT:', error);
+    console.error('Détails:', error.message);
+  }
+}
+
+// ============================================
+// PHASE 2: LARGAGE ET ASCENSION (DÉSACTIVÉ)
 // ============================================
 
 function createLaunchPhase(carrierFinalPosition) {
@@ -782,54 +967,45 @@ function createDeorbitPhase(orbitFinalPosition) {
 // EXÉCUTION DE LA SIMULATION COMPLÈTE
 // ============================================
 
-// Créer toutes les phases
+// Créer uniquement la phase Boeing 747
 const carrierPath = createCarrierPhase();
-const launchPath = createLaunchPhase(carrierPath);
-const orbitPath = createOrbitPhase(launchPath);
-createDeorbitPhase(orbitPath);
 
 // Ajouter les satellites réels
 addRealSatellites();
 
-// Suivre l'avion avec la caméra
+// Charger les trajectoires GMAT
+loadGMATTrajectories();
+
+// Caméra libre - tu peux la bouger comme tu veux
 const aircraft = viewer.entities.getById("carrier-aircraft");
-viewer.trackedEntity = aircraft;
 
-// Configurer la vue de la caméra derrière l'avion
-viewer.trackedEntityChanged.addEventListener(function() {
-  if (viewer.trackedEntity === aircraft) {
-    viewer.scene.screenSpaceCameraController.enableRotate = true;
-    viewer.scene.screenSpaceCameraController.enableZoom = true;
-  }
-});
-
-// Positionner la caméra derrière l'avion après un court délai
-setTimeout(function() {
-  if (viewer.trackedEntity === aircraft) {
+if (aircraft) {
+  // Positionner la caméra initiale derrière l'avion
+  setTimeout(function() {
     const position = aircraft.position.getValue(viewer.clock.currentTime);
     if (position) {
-      // Vue derrière l'avion : 100m en arrière, 30m en hauteur
       viewer.camera.lookAt(
         position,
         new Cesium.HeadingPitchRange(
-          0, // heading (direction)
-          Cesium.Math.toRadians(-10), // pitch (angle vers le bas)
-          100 // distance en mètres
+          0,
+          Cesium.Math.toRadians(-20),
+          500
         )
       );
+      // Libérer la caméra après le positionnement initial
+      viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
     }
-  }
-}, 100);
+  }, 100);
+} else {
+  console.error("❌ Impossible de trouver l'avion carrier-aircraft");
+}
 
 // Afficher les informations de mission
 console.log("=".repeat(60));
-console.log("🚀 AFREELEO MISSION SIMULATOR - INITIALISÉ");
+console.log("✈️ BOEING 747 FLIGHT SIMULATOR");
 console.log("=".repeat(60));
-console.log(`📍 Site de lancement: Dakar (${MISSION_CONFIG.launchSite.lat}°N, ${MISSION_CONFIG.launchSite.lon}°E)`);
-console.log(`✈️  Phase 1: Avion Porteur - ${MISSION_CONFIG.phaseDurations.carrier}s`);
-console.log(`🚀 Phase 2: Ascension - ${MISSION_CONFIG.phaseDurations.launch}s`);
-console.log(`🛰️  Phase 3: Orbite LEO - ${MISSION_CONFIG.phaseDurations.orbit}s`);
-console.log(`♻️  Phase 4: Désorbitation - ${MISSION_CONFIG.phaseDurations.deorbit}s (${MISSION_CONFIG.phaseDurations.deorbit / 3600}h)`);
+console.log(`📍 Départ: Dakar Airport (${MISSION_CONFIG.runway.start.lat}°N, ${MISSION_CONFIG.runway.start.lon}°E)`);
+console.log(`🎯 Destination: 1.194030°E, 13.346754°S (Afrique centrale)`);
 console.log(`🌍 ${TLE_DATA.length} satellites réels en orbite ajoutés`);
 console.log("=".repeat(60));
 console.log("▶️  Appuyez sur PLAY pour démarrer la simulation");
