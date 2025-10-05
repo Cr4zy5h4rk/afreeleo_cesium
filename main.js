@@ -1,5 +1,6 @@
 import * as Cesium from "cesium";
 import * as satellite from "satellite.js";
+import { MISSION_CONFIGURATION } from "./config";
 
 // Configuration Cesium
 const viewer = new Cesium.Viewer("cesiumContainer", {
@@ -1212,11 +1213,11 @@ function createFalcon9Launch() {
 async function loadGMATTrajectories() {
   try {
     // Charger les données du satellite
-    const satelliteResponse = await fetch('./mission_38baa6d1_satellite.txt');
+    const satelliteResponse = await fetch(MISSION_CONFIGURATION.trajectoryFiles.satellite);
     const satelliteData = await satelliteResponse.text();
 
     // Charger les données de l'upperstage
-    const upperstageResponse = await fetch('./mission_38baa6d1_upperstage.txt');
+    const upperstageResponse = await fetch(MISSION_CONFIGURATION.trajectoryFiles.upperstage);
     const upperstageData = await upperstageResponse.text();
 
     // Parser les données du satellite
