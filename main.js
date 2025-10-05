@@ -262,17 +262,466 @@ viewer.entities.add({
   },
 });
 
+// Marqueur point de largage Falcon 9
+viewer.entities.add({
+  name: "Rocket Launch Point",
+  position: Cesium.Cartesian3.fromDegrees(-16.493000, 3.336000, 12000),
+  point: {
+    pixelSize: 20,
+    color: Cesium.Color.ORANGE,
+    outlineColor: Cesium.Color.WHITE,
+    outlineWidth: 3,
+  },
+  label: {
+    text: "🚀 ROCKET LAUNCH",
+    font: "12pt monospace",
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    outlineWidth: 2,
+    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    pixelOffset: new Cesium.Cartesian2(0, -20),
+    fillColor: Cesium.Color.ORANGE,
+    showBackground: true,
+    backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+  },
+});
+
+// Marqueur séparation premier étage (120km altitude)
+viewer.entities.add({
+  name: "Stage 1 Separation",
+  position: Cesium.Cartesian3.fromDegrees(-16.493000 + 18, 3.336000 + 0.8, 120000),
+  point: {
+    pixelSize: 15,
+    color: Cesium.Color.RED,
+    outlineColor: Cesium.Color.YELLOW,
+    outlineWidth: 2,
+  },
+  label: {
+    text: "💥 STAGE 1 SEP (120km)",
+    font: "11pt monospace",
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    outlineWidth: 2,
+    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    pixelOffset: new Cesium.Cartesian2(0, -15),
+    fillColor: Cesium.Color.YELLOW,
+    showBackground: true,
+    backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+  },
+});
+
+// Marqueur déploiement satellite (coordonnées exactes GMAT - 679.86km)
+viewer.entities.add({
+  name: "Satellite Deployment",
+  position: Cesium.Cartesian3.fromDegrees(161.236329, 0.150964, 679860),
+  point: {
+    pixelSize: 20,
+    color: Cesium.Color.LIME,
+    outlineColor: Cesium.Color.WHITE,
+    outlineWidth: 3,
+  },
+  label: {
+    text: "🛰️ DEPLOYMENT (679.86km)",
+    font: "12pt monospace",
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    outlineWidth: 2,
+    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    pixelOffset: new Cesium.Cartesian2(0, -20),
+    fillColor: Cesium.Color.LIME,
+    showBackground: true,
+    backgroundColor: Cesium.Color.BLACK.withAlpha(0.7),
+  },
+});
+
+// Définition manuelle de tous les points de vol
+// Trajectoire optimale: Dakar → Golfe de Guinée (au-dessus de l'océan Atlantique)
+// Point de largage: proche de l'équateur, au-dessus de l'océan
+const flightData = [
+  // ===== PHASE 0: PAUSE - Stationnement début de piste =====
+  { lon: -17.072957, lat: 14.686448, alt: 0, time: 0, phase: "PAUSE" },
+  { lon: -17.072955, lat: 14.685900, alt: 0, time: 20, phase: "PAUSE" },
+  { lon: -17.072953, lat: 14.685400, alt: 0, time: 40, phase: "PAUSE" },
+  { lon: -17.072950, lat: 14.684900, alt: 0, time: 60, phase: "PAUSE" },
+
+  // ===== PHASE 1: TAXIING - Roulage lent vers position de décollage =====
+  { lon: -17.072945, lat: 14.684200, alt: 0, time: 70, phase: "TAXIING" },
+  { lon: -17.072940, lat: 14.683500, alt: 0, time: 80, phase: "TAXIING" },
+  { lon: -17.072935, lat: 14.682800, alt: 0, time: 90, phase: "TAXIING" },
+  { lon: -17.072930, lat: 14.682100, alt: 0, time: 100, phase: "TAXIING" },
+  { lon: -17.072925, lat: 14.681400, alt: 0, time: 110, phase: "TAXIING" },
+  { lon: -17.072920, lat: 14.680700, alt: 0, time: 120, phase: "TAXIING" },
+
+  // ===== PHASE 2: TAKEOFF - Décollage ultra-réaliste =====
+
+  // Début de l'accélération (freins relâchés, pleine puissance)
+  { lon: -17.072915, lat: 14.680000, alt: 0, time: 125, phase: "TAKEOFF" },
+  { lon: -17.072910, lat: 14.679200, alt: 0, time: 128, phase: "TAKEOFF" },
+  { lon: -17.072905, lat: 14.678300, alt: 0, time: 131, phase: "TAKEOFF" },
+
+  // Accélération progressive (50-100 kt)
+  { lon: -17.072900, lat: 14.677300, alt: 0, time: 134, phase: "TAKEOFF" },
+  { lon: -17.072895, lat: 14.676200, alt: 0, time: 137, phase: "TAKEOFF" },
+  { lon: -17.072890, lat: 14.675000, alt: 0, time: 140, phase: "TAKEOFF" },
+
+  // Accélération continue (100-140 kt)
+  { lon: -17.072880, lat: 14.673500, alt: 0, time: 143, phase: "TAKEOFF" },
+  { lon: -17.072870, lat: 14.671800, alt: 0, time: 146, phase: "TAKEOFF" },
+  { lon: -17.072860, lat: 14.669900, alt: 0, time: 149, phase: "TAKEOFF" },
+
+  // V1 - Vitesse de décision (140-150 kt) - point de non-retour
+  { lon: -17.072850, lat: 14.667900, alt: 0, time: 152, phase: "TAKEOFF" },
+  { lon: -17.072840, lat: 14.665700, alt: 0, time: 155, phase: "TAKEOFF" },
+
+  // VR - Vitesse de rotation (155-165 kt) - début de rotation
+  { lon: -17.072830, lat: 14.663400, alt: 0, time: 158, phase: "TAKEOFF" },
+  { lon: -17.072820, lat: 14.661900, alt: 5, time: 159, phase: "TAKEOFF" },  // Nez commence à lever
+  { lon: -17.072810, lat: 14.660700, alt: 15, time: 160, phase: "TAKEOFF" }, // Rotation en cours
+
+  // Décollage - train principal quitte le sol (V2 ~170 kt)
+  { lon: -17.072800, lat: 14.659500, alt: 25, time: 161, phase: "TAKEOFF" }, // Wheels up!
+  { lon: -17.072790, lat: 14.658400, alt: 40, time: 162, phase: "TAKEOFF" },
+  { lon: -17.072780, lat: 14.657300, alt: 60, time: 163, phase: "TAKEOFF" },
+
+  // Montée initiale (angle ~12°, taux 200 m/min)
+  { lon: -17.072770, lat: 14.656200, alt: 80, time: 164, phase: "TAKEOFF" },
+  { lon: -17.072760, lat: 14.655100, alt: 100, time: 165, phase: "TAKEOFF" },
+  { lon: -17.072745, lat: 14.653900, alt: 125, time: 166, phase: "TAKEOFF" },
+  { lon: -17.072730, lat: 14.652700, alt: 150, time: 167, phase: "TAKEOFF" },
+  { lon: -17.072710, lat: 14.651400, alt: 180, time: 168, phase: "TAKEOFF" },
+  { lon: -17.072690, lat: 14.650100, alt: 210, time: 169, phase: "TAKEOFF" },
+  { lon: -17.072670, lat: 14.648800, alt: 240, time: 170, phase: "TAKEOFF" },
+
+  // Continuation montée initiale (train rentré, volets en configuration TO)
+  { lon: -17.072650, lat: 14.647400, alt: 275, time: 171, phase: "TAKEOFF" },
+  { lon: -17.072625, lat: 14.645900, alt: 310, time: 172, phase: "TAKEOFF" },
+  { lon: -17.072600, lat: 14.644400, alt: 350, time: 173, phase: "TAKEOFF" },
+  { lon: -17.072570, lat: 14.642800, alt: 390, time: 174, phase: "TAKEOFF" },
+  { lon: -17.072540, lat: 14.641200, alt: 435, time: 175, phase: "TAKEOFF" },
+  { lon: -17.072510, lat: 14.639500, alt: 480, time: 176, phase: "TAKEOFF" },
+  { lon: -17.072475, lat: 14.637700, alt: 530, time: 177, phase: "TAKEOFF" },
+  { lon: -17.072440, lat: 14.635900, alt: 580, time: 178, phase: "TAKEOFF" },
+  { lon: -17.072400, lat: 14.634000, alt: 635, time: 179, phase: "TAKEOFF" },
+  { lon: -17.072360, lat: 14.632100, alt: 690, time: 180, phase: "TAKEOFF" },
+
+  // ===== PHASE 3: INITIAL CLIMB - Montée initiale douce =====
+  // Taux de montée: ~300m/min (réaliste pour A380)
+  // Continuation fluide depuis le décollage
+  { lon: -17.072320, lat: 14.630200, alt: 750, time: 181, phase: "CLIMB" },
+  { lon: -17.072280, lat: 14.628300, alt: 810, time: 182, phase: "CLIMB" },
+  { lon: -17.072240, lat: 14.626400, alt: 875, time: 183, phase: "CLIMB" },
+  { lon: -17.072200, lat: 14.624500, alt: 940, time: 184, phase: "CLIMB" },
+  { lon: -17.072160, lat: 14.622600, alt: 1010, time: 185, phase: "CLIMB" },
+  { lon: -17.072115, lat: 14.620600, alt: 1080, time: 186, phase: "CLIMB" },
+  { lon: -17.072070, lat: 14.618600, alt: 1155, time: 187, phase: "CLIMB" },
+  { lon: -17.072020, lat: 14.616500, alt: 1230, time: 188, phase: "CLIMB" },
+  { lon: -17.071970, lat: 14.614400, alt: 1310, time: 189, phase: "CLIMB" },
+  { lon: -17.071920, lat: 14.612300, alt: 1390, time: 190, phase: "CLIMB" },
+  { lon: -17.071865, lat: 14.610100, alt: 1475, time: 191, phase: "CLIMB" },
+  { lon: -17.071810, lat: 14.607900, alt: 1560, time: 192, phase: "CLIMB" },
+  { lon: -17.071750, lat: 14.605600, alt: 1650, time: 193, phase: "CLIMB" },
+  { lon: -17.071690, lat: 14.603300, alt: 1740, time: 194, phase: "CLIMB" },
+  { lon: -17.071625, lat: 14.600900, alt: 1835, time: 195, phase: "CLIMB" },
+  { lon: -17.071560, lat: 14.598500, alt: 1930, time: 196, phase: "CLIMB" },
+  { lon: -17.071490, lat: 14.596000, alt: 2030, time: 197, phase: "CLIMB" },
+  { lon: -17.071420, lat: 14.593500, alt: 2130, time: 198, phase: "CLIMB" },
+  { lon: -17.071350, lat: 14.591000, alt: 2235, time: 199, phase: "CLIMB" },
+  { lon: -17.071275, lat: 14.588400, alt: 2340, time: 200, phase: "CLIMB" },
+
+  // ===== PHASE 4: CLIMB TO CRUISE - Montée continue vers altitude de croisière =====
+  // Légère courbe douce vers le sud (direction Golfe de Guinée)
+  { lon: -17.071200, lat: 14.585800, alt: 2450, time: 201, phase: "CLIMB" },
+  { lon: -17.071120, lat: 14.583100, alt: 2560, time: 205, phase: "CLIMB" },
+  { lon: -17.071030, lat: 14.580300, alt: 2675, time: 210, phase: "CLIMB" },
+  { lon: -17.070940, lat: 14.577400, alt: 2790, time: 215, phase: "CLIMB" },
+  { lon: -17.070840, lat: 14.574400, alt: 2910, time: 220, phase: "CLIMB" },
+  { lon: -17.070730, lat: 14.571300, alt: 3030, time: 225, phase: "CLIMB" },
+  { lon: -17.070620, lat: 14.568100, alt: 3155, time: 230, phase: "CLIMB" },
+  { lon: -17.070500, lat: 14.564800, alt: 3280, time: 235, phase: "CLIMB" },
+  { lon: -17.070370, lat: 14.561400, alt: 3410, time: 240, phase: "CLIMB" },
+  { lon: -17.070230, lat: 14.557900, alt: 3540, time: 245, phase: "CLIMB" },
+  { lon: -17.070090, lat: 14.554300, alt: 3675, time: 250, phase: "CLIMB" },
+  { lon: -17.069940, lat: 14.550600, alt: 3810, time: 255, phase: "CLIMB" },
+  { lon: -17.069780, lat: 14.546800, alt: 3950, time: 260, phase: "CLIMB" },
+  { lon: -17.069610, lat: 14.542900, alt: 4090, time: 265, phase: "CLIMB" },
+  { lon: -17.069440, lat: 14.538900, alt: 4235, time: 270, phase: "CLIMB" },
+  { lon: -17.069260, lat: 14.534800, alt: 4380, time: 275, phase: "CLIMB" },
+  { lon: -17.069070, lat: 14.530600, alt: 4530, time: 280, phase: "CLIMB" },
+  { lon: -17.068870, lat: 14.526200, alt: 4680, time: 285, phase: "CLIMB" },
+  { lon: -17.068670, lat: 14.521700, alt: 4835, time: 290, phase: "CLIMB" },
+  { lon: -17.068460, lat: 14.517100, alt: 4990, time: 295, phase: "CLIMB" },
+  { lon: -17.068240, lat: 14.512400, alt: 5150, time: 300, phase: "CLIMB" },
+  { lon: -17.068010, lat: 14.507600, alt: 5310, time: 305, phase: "CLIMB" },
+  { lon: -17.067770, lat: 14.502700, alt: 5475, time: 310, phase: "CLIMB" },
+  { lon: -17.067520, lat: 14.497700, alt: 5640, time: 315, phase: "CLIMB" },
+  { lon: -17.067260, lat: 14.492600, alt: 5810, time: 320, phase: "CLIMB" },
+  { lon: -17.066990, lat: 14.487400, alt: 5980, time: 325, phase: "CLIMB" },
+  { lon: -17.066710, lat: 14.482100, alt: 6155, time: 330, phase: "CLIMB" },
+  { lon: -17.066420, lat: 14.476700, alt: 6330, time: 335, phase: "CLIMB" },
+  { lon: -17.066120, lat: 14.471200, alt: 6510, time: 340, phase: "CLIMB" },
+  { lon: -17.065810, lat: 14.465600, alt: 6690, time: 345, phase: "CLIMB" },
+  { lon: -17.065490, lat: 14.459900, alt: 6875, time: 350, phase: "CLIMB" },
+  { lon: -17.065160, lat: 14.454100, alt: 7060, time: 355, phase: "CLIMB" },
+  { lon: -17.064820, lat: 14.448200, alt: 7250, time: 360, phase: "CLIMB" },
+  { lon: -17.064470, lat: 14.442200, alt: 7440, time: 365, phase: "CLIMB" },
+  { lon: -17.064110, lat: 14.436100, alt: 7635, time: 370, phase: "CLIMB" },
+  { lon: -17.063740, lat: 14.429900, alt: 7830, time: 375, phase: "CLIMB" },
+  { lon: -17.063360, lat: 14.423600, alt: 8030, time: 380, phase: "CLIMB" },
+  { lon: -17.062970, lat: 14.417200, alt: 8230, time: 385, phase: "CLIMB" },
+  { lon: -17.062570, lat: 14.410700, alt: 8435, time: 390, phase: "CLIMB" },
+  { lon: -17.062160, lat: 14.404100, alt: 8640, time: 395, phase: "CLIMB" },
+  { lon: -17.061740, lat: 14.397400, alt: 8850, time: 400, phase: "CLIMB" },
+  { lon: -17.061310, lat: 14.390600, alt: 9060, time: 405, phase: "CLIMB" },
+  { lon: -17.060870, lat: 14.383700, alt: 9275, time: 410, phase: "CLIMB" },
+  { lon: -17.060420, lat: 14.376700, alt: 9490, time: 415, phase: "CLIMB" },
+  { lon: -17.059960, lat: 14.369600, alt: 9710, time: 420, phase: "CLIMB" },
+  { lon: -17.059490, lat: 14.362400, alt: 9930, time: 425, phase: "CLIMB" },
+  { lon: -17.059010, lat: 14.355100, alt: 10155, time: 430, phase: "CLIMB" },
+  { lon: -17.058520, lat: 14.347700, alt: 10380, time: 435, phase: "CLIMB" },
+  { lon: -17.058020, lat: 14.340200, alt: 10610, time: 440, phase: "CLIMB" },
+  { lon: -17.057510, lat: 14.332600, alt: 10840, time: 445, phase: "CLIMB" },
+  { lon: -17.056990, lat: 14.324900, alt: 11075, time: 450, phase: "CLIMB" },
+  { lon: -17.056460, lat: 14.317100, alt: 11310, time: 455, phase: "CLIMB" },
+  { lon: -17.055920, lat: 14.309200, alt: 11550, time: 460, phase: "CLIMB" },
+  { lon: -17.055370, lat: 14.301200, alt: 11790, time: 465, phase: "CLIMB" },
+  { lon: -17.054810, lat: 14.293100, alt: 11950, time: 470, phase: "CLIMB" },
+  { lon: -17.054240, lat: 14.284900, alt: 12000, time: 475, phase: "CLIMB" },
+
+  // ===== PHASE 5: CRUISE - Vol de croisière à 12km =====
+  // Trajectoire rectiligne parfaite vers le point de largage (Golfe de Guinée)
+  // Calcul: ligne droite de (-17.054240, 14.284900) à (-15.955650, 3.397300)
+  { lon: -17.052200, lat: 14.244400, alt: 12000, time: 480, phase: "CRUISE" },
+  { lon: -17.048050, lat: 14.163600, alt: 12000, time: 500, phase: "CRUISE" },
+  { lon: -17.043900, lat: 14.082800, alt: 12000, time: 520, phase: "CRUISE" },
+  { lon: -17.039750, lat: 14.002000, alt: 12000, time: 540, phase: "CRUISE" },
+  { lon: -17.035600, lat: 13.921200, alt: 12000, time: 560, phase: "CRUISE" },
+  { lon: -17.031450, lat: 13.840400, alt: 12000, time: 580, phase: "CRUISE" },
+  { lon: -17.027300, lat: 13.759600, alt: 12000, time: 600, phase: "CRUISE" },
+  { lon: -17.023150, lat: 13.678800, alt: 12000, time: 620, phase: "CRUISE" },
+  { lon: -17.019000, lat: 13.598000, alt: 12000, time: 640, phase: "CRUISE" },
+  { lon: -17.014850, lat: 13.517200, alt: 12000, time: 660, phase: "CRUISE" },
+  { lon: -17.010700, lat: 13.436400, alt: 12000, time: 680, phase: "CRUISE" },
+  { lon: -17.006550, lat: 13.355600, alt: 12000, time: 700, phase: "CRUISE" },
+  { lon: -17.002400, lat: 13.274800, alt: 12000, time: 720, phase: "CRUISE" },
+  { lon: -16.998250, lat: 13.194000, alt: 12000, time: 740, phase: "CRUISE" },
+  { lon: -16.994100, lat: 13.113200, alt: 12000, time: 760, phase: "CRUISE" },
+  { lon: -16.989950, lat: 13.032400, alt: 12000, time: 780, phase: "CRUISE" },
+  { lon: -16.985800, lat: 12.951600, alt: 12000, time: 800, phase: "CRUISE" },
+  { lon: -16.981650, lat: 12.870800, alt: 12000, time: 820, phase: "CRUISE" },
+  { lon: -16.977500, lat: 12.790000, alt: 12000, time: 840, phase: "CRUISE" },
+  { lon: -16.973350, lat: 12.709200, alt: 12000, time: 860, phase: "CRUISE" },
+  { lon: -16.969200, lat: 12.628400, alt: 12000, time: 880, phase: "CRUISE" },
+  { lon: -16.965050, lat: 12.547600, alt: 12000, time: 900, phase: "CRUISE" },
+  { lon: -16.960900, lat: 12.466800, alt: 12000, time: 920, phase: "CRUISE" },
+  { lon: -16.956750, lat: 12.386000, alt: 12000, time: 940, phase: "CRUISE" },
+  { lon: -16.952600, lat: 12.305200, alt: 12000, time: 960, phase: "CRUISE" },
+  { lon: -16.948450, lat: 12.224400, alt: 12000, time: 980, phase: "CRUISE" },
+  { lon: -16.944300, lat: 12.143600, alt: 12000, time: 1000, phase: "CRUISE" },
+  { lon: -16.940150, lat: 12.062800, alt: 12000, time: 1020, phase: "CRUISE" },
+  { lon: -16.936000, lat: 11.982000, alt: 12000, time: 1040, phase: "CRUISE" },
+  { lon: -16.931850, lat: 11.901200, alt: 12000, time: 1060, phase: "CRUISE" },
+  { lon: -16.927700, lat: 11.820400, alt: 12000, time: 1080, phase: "CRUISE" },
+  { lon: -16.923550, lat: 11.739600, alt: 12000, time: 1100, phase: "CRUISE" },
+  { lon: -16.919400, lat: 11.658800, alt: 12000, time: 1120, phase: "CRUISE" },
+  { lon: -16.915250, lat: 11.578000, alt: 12000, time: 1140, phase: "CRUISE" },
+  { lon: -16.911100, lat: 11.497200, alt: 12000, time: 1160, phase: "CRUISE" },
+  { lon: -16.906950, lat: 11.416400, alt: 12000, time: 1180, phase: "CRUISE" },
+  { lon: -16.902800, lat: 11.335600, alt: 12000, time: 1200, phase: "CRUISE" },
+  { lon: -16.898650, lat: 11.254800, alt: 12000, time: 1220, phase: "CRUISE" },
+  { lon: -16.894500, lat: 11.174000, alt: 12000, time: 1240, phase: "CRUISE" },
+  { lon: -16.890350, lat: 11.093200, alt: 12000, time: 1260, phase: "CRUISE" },
+  { lon: -16.886200, lat: 11.012400, alt: 12000, time: 1280, phase: "CRUISE" },
+  { lon: -16.882050, lat: 10.931600, alt: 12000, time: 1300, phase: "CRUISE" },
+  { lon: -16.877900, lat: 10.850800, alt: 12000, time: 1320, phase: "CRUISE" },
+  { lon: -16.873750, lat: 10.770000, alt: 12000, time: 1340, phase: "CRUISE" },
+  { lon: -16.869600, lat: 10.689200, alt: 12000, time: 1360, phase: "CRUISE" },
+  { lon: -16.865450, lat: 10.608400, alt: 12000, time: 1380, phase: "CRUISE" },
+  { lon: -16.861300, lat: 10.527600, alt: 12000, time: 1400, phase: "CRUISE" },
+  { lon: -16.857150, lat: 10.446800, alt: 12000, time: 1420, phase: "CRUISE" },
+  { lon: -16.853000, lat: 10.366000, alt: 12000, time: 1440, phase: "CRUISE" },
+  { lon: -16.848850, lat: 10.285200, alt: 12000, time: 1460, phase: "CRUISE" },
+  { lon: -16.844700, lat: 10.204400, alt: 12000, time: 1480, phase: "CRUISE" },
+  { lon: -16.840550, lat: 10.123600, alt: 12000, time: 1500, phase: "CRUISE" },
+  { lon: -16.836400, lat: 10.042800, alt: 12000, time: 1520, phase: "CRUISE" },
+  { lon: -16.832250, lat: 9.962000, alt: 12000, time: 1540, phase: "CRUISE" },
+  { lon: -16.828100, lat: 9.881200, alt: 12000, time: 1560, phase: "CRUISE" },
+  { lon: -16.823950, lat: 9.800400, alt: 12000, time: 1580, phase: "CRUISE" },
+  { lon: -16.819800, lat: 9.719600, alt: 12000, time: 1600, phase: "CRUISE" },
+  { lon: -16.815650, lat: 9.638800, alt: 12000, time: 1620, phase: "CRUISE" },
+  { lon: -16.811500, lat: 9.558000, alt: 12000, time: 1640, phase: "CRUISE" },
+  { lon: -16.807350, lat: 9.477200, alt: 12000, time: 1660, phase: "CRUISE" },
+  { lon: -16.803200, lat: 9.396400, alt: 12000, time: 1680, phase: "CRUISE" },
+  { lon: -16.799050, lat: 9.315600, alt: 12000, time: 1700, phase: "CRUISE" },
+  { lon: -16.794900, lat: 9.234800, alt: 12000, time: 1720, phase: "CRUISE" },
+  { lon: -16.790750, lat: 9.154000, alt: 12000, time: 1740, phase: "CRUISE" },
+  { lon: -16.786600, lat: 9.073200, alt: 12000, time: 1760, phase: "CRUISE" },
+  { lon: -16.782450, lat: 8.992400, alt: 12000, time: 1780, phase: "CRUISE" },
+  { lon: -16.778300, lat: 8.911600, alt: 12000, time: 1800, phase: "CRUISE" },
+  { lon: -16.774150, lat: 8.830800, alt: 12000, time: 1820, phase: "CRUISE" },
+  { lon: -16.770000, lat: 8.750000, alt: 12000, time: 1840, phase: "CRUISE" },
+  { lon: -16.765850, lat: 8.669200, alt: 12000, time: 1860, phase: "CRUISE" },
+  { lon: -16.761700, lat: 8.588400, alt: 12000, time: 1880, phase: "CRUISE" },
+  { lon: -16.757550, lat: 8.507600, alt: 12000, time: 1900, phase: "CRUISE" },
+  { lon: -16.753400, lat: 8.426800, alt: 12000, time: 1920, phase: "CRUISE" },
+  { lon: -16.749250, lat: 8.346000, alt: 12000, time: 1940, phase: "CRUISE" },
+  { lon: -16.745100, lat: 8.265200, alt: 12000, time: 1960, phase: "CRUISE" },
+  { lon: -16.740950, lat: 8.184400, alt: 12000, time: 1980, phase: "CRUISE" },
+  { lon: -16.736800, lat: 8.103600, alt: 12000, time: 2000, phase: "CRUISE" },
+  { lon: -16.732650, lat: 8.022800, alt: 12000, time: 2020, phase: "CRUISE" },
+  { lon: -16.728500, lat: 7.942000, alt: 12000, time: 2040, phase: "CRUISE" },
+  { lon: -16.724350, lat: 7.861200, alt: 12000, time: 2060, phase: "CRUISE" },
+  { lon: -16.720200, lat: 7.780400, alt: 12000, time: 2080, phase: "CRUISE" },
+  { lon: -16.716050, lat: 7.699600, alt: 12000, time: 2100, phase: "CRUISE" },
+  { lon: -16.711900, lat: 7.618800, alt: 12000, time: 2120, phase: "CRUISE" },
+  { lon: -16.707750, lat: 7.538000, alt: 12000, time: 2140, phase: "CRUISE" },
+  { lon: -16.703600, lat: 7.457200, alt: 12000, time: 2160, phase: "CRUISE" },
+  { lon: -16.699450, lat: 7.376400, alt: 12000, time: 2180, phase: "CRUISE" },
+  { lon: -16.695300, lat: 7.295600, alt: 12000, time: 2200, phase: "CRUISE" },
+  { lon: -16.691150, lat: 7.214800, alt: 12000, time: 2220, phase: "CRUISE" },
+  { lon: -16.687000, lat: 7.134000, alt: 12000, time: 2240, phase: "CRUISE" },
+  { lon: -16.682850, lat: 7.053200, alt: 12000, time: 2260, phase: "CRUISE" },
+  { lon: -16.678700, lat: 6.972400, alt: 12000, time: 2280, phase: "CRUISE" },
+  { lon: -16.674550, lat: 6.891600, alt: 12000, time: 2300, phase: "CRUISE" },
+  { lon: -16.670400, lat: 6.810800, alt: 12000, time: 2320, phase: "CRUISE" },
+  { lon: -16.666250, lat: 6.730000, alt: 12000, time: 2340, phase: "CRUISE" },
+  { lon: -16.662100, lat: 6.649200, alt: 12000, time: 2360, phase: "CRUISE" },
+  { lon: -16.657950, lat: 6.568400, alt: 12000, time: 2380, phase: "CRUISE" },
+  { lon: -16.653800, lat: 6.487600, alt: 12000, time: 2400, phase: "CRUISE" },
+  { lon: -16.649650, lat: 6.406800, alt: 12000, time: 2420, phase: "CRUISE" },
+  { lon: -16.645500, lat: 6.326000, alt: 12000, time: 2440, phase: "CRUISE" },
+  { lon: -16.641350, lat: 6.245200, alt: 12000, time: 2460, phase: "CRUISE" },
+  { lon: -16.637200, lat: 6.164400, alt: 12000, time: 2480, phase: "CRUISE" },
+  { lon: -16.633050, lat: 6.083600, alt: 12000, time: 2500, phase: "CRUISE" },
+  { lon: -16.628900, lat: 6.002800, alt: 12000, time: 2520, phase: "CRUISE" },
+  { lon: -16.624750, lat: 5.922000, alt: 12000, time: 2540, phase: "CRUISE" },
+  { lon: -16.620600, lat: 5.841200, alt: 12000, time: 2560, phase: "CRUISE" },
+  { lon: -16.616450, lat: 5.760400, alt: 12000, time: 2580, phase: "CRUISE" },
+  { lon: -16.612300, lat: 5.679600, alt: 12000, time: 2600, phase: "CRUISE" },
+  { lon: -16.608150, lat: 5.598800, alt: 12000, time: 2620, phase: "CRUISE" },
+  { lon: -16.604000, lat: 5.518000, alt: 12000, time: 2640, phase: "CRUISE" },
+  { lon: -16.599850, lat: 5.437200, alt: 12000, time: 2660, phase: "CRUISE" },
+  { lon: -16.595700, lat: 5.356400, alt: 12000, time: 2680, phase: "CRUISE" },
+  { lon: -16.591550, lat: 5.275600, alt: 12000, time: 2700, phase: "CRUISE" },
+  { lon: -16.587400, lat: 5.194800, alt: 12000, time: 2720, phase: "CRUISE" },
+  { lon: -16.583250, lat: 5.114000, alt: 12000, time: 2740, phase: "CRUISE" },
+  { lon: -16.579100, lat: 5.033200, alt: 12000, time: 2760, phase: "CRUISE" },
+  { lon: -16.574950, lat: 4.952400, alt: 12000, time: 2780, phase: "CRUISE" },
+  { lon: -16.570800, lat: 4.871600, alt: 12000, time: 2800, phase: "CRUISE" },
+  { lon: -16.566650, lat: 4.790800, alt: 12000, time: 2820, phase: "CRUISE" },
+  { lon: -16.562500, lat: 4.710000, alt: 12000, time: 2840, phase: "CRUISE" },
+  { lon: -16.558350, lat: 4.629200, alt: 12000, time: 2860, phase: "CRUISE" },
+  { lon: -16.554200, lat: 4.548400, alt: 12000, time: 2880, phase: "CRUISE" },
+  { lon: -16.550050, lat: 4.467600, alt: 12000, time: 2900, phase: "CRUISE" },
+  { lon: -16.545900, lat: 4.386800, alt: 12000, time: 2920, phase: "CRUISE" },
+  { lon: -16.541750, lat: 4.306000, alt: 12000, time: 2940, phase: "CRUISE" },
+  { lon: -16.537600, lat: 4.225200, alt: 12000, time: 2960, phase: "CRUISE" },
+  { lon: -16.533450, lat: 4.144400, alt: 12000, time: 2980, phase: "CRUISE" },
+  { lon: -16.529300, lat: 4.063600, alt: 12000, time: 3000, phase: "CRUISE" },
+  { lon: -16.525150, lat: 3.982800, alt: 12000, time: 3020, phase: "CRUISE" },
+  { lon: -16.521000, lat: 3.902000, alt: 12000, time: 3040, phase: "CRUISE" },
+  { lon: -16.516850, lat: 3.821200, alt: 12000, time: 3060, phase: "CRUISE" },
+  { lon: -16.512700, lat: 3.740400, alt: 12000, time: 3080, phase: "CRUISE" },
+  { lon: -16.508550, lat: 3.659600, alt: 12000, time: 3100, phase: "CRUISE" },
+  { lon: -16.504400, lat: 3.578800, alt: 12000, time: 3120, phase: "CRUISE" },
+  { lon: -16.500250, lat: 3.498000, alt: 12000, time: 3140, phase: "CRUISE" },
+
+  // ===== PHASE 6: APPROACH - Approche finale du point de largage =====
+  { lon: -16.496100, lat: 3.417200, alt: 12000, time: 3155, phase: "APPROACH" },
+
+  // ===== PHASE 7: LAUNCH - Largage de la fusée =====
+  // L'avion maintient trajectoire stable puis descend légèrement pour se séparer de la fusée (au-dessus)
+  { lon: -16.495000, lat: 3.390000, alt: 12000, time: 3158, phase: "LAUNCH" },
+  { lon: -16.494000, lat: 3.363000, alt: 12000, time: 3161, phase: "LAUNCH" },
+  { lon: -16.493000, lat: 3.336000, alt: 12000, time: 3164, phase: "LAUNCH" }, // Largage!
+
+  // Descente légère pour séparation verticale (fusée reste à 12km, avion descend)
+  { lon: -16.492000, lat: 3.309000, alt: 11950, time: 3167, phase: "LAUNCH" },
+  { lon: -16.491000, lat: 3.282000, alt: 11900, time: 3170, phase: "LAUNCH" },
+
+  // ===== PHASE 8: EVASIVE - Manœuvre d'évitement et mise en sécurité =====
+  // Virage rapide à droite (vers l'ouest) + descente continue
+  { lon: -16.490000, lat: 3.255000, alt: 11850, time: 3173, phase: "EVASIVE" },
+  { lon: -16.489000, lat: 3.228000, alt: 11800, time: 3176, phase: "EVASIVE" },
+  { lon: -16.488500, lat: 3.201000, alt: 11750, time: 3179, phase: "EVASIVE" },
+  { lon: -16.488800, lat: 3.174000, alt: 11700, time: 3182, phase: "EVASIVE" },
+  { lon: -16.489800, lat: 3.147000, alt: 11650, time: 3185, phase: "EVASIVE" },
+  { lon: -16.491500, lat: 3.120000, alt: 11600, time: 3188, phase: "EVASIVE" },
+
+  // Virage continu vers le nord (début du demi-tour)
+  { lon: -16.494000, lat: 3.095000, alt: 11550, time: 3191, phase: "EVASIVE" },
+  { lon: -16.497500, lat: 3.072000, alt: 11500, time: 3194, phase: "EVASIVE" },
+  { lon: -16.502000, lat: 3.052000, alt: 11450, time: 3197, phase: "EVASIVE" },
+  { lon: -16.507500, lat: 3.035000, alt: 11400, time: 3200, phase: "EVASIVE" },
+  { lon: -16.514000, lat: 3.021000, alt: 11400, time: 3203, phase: "EVASIVE" },
+  { lon: -16.521000, lat: 3.010000, alt: 11400, time: 3206, phase: "EVASIVE" },
+
+  // ===== PHASE 9: RETURN - Retour vers Dakar =====
+  // Grand virage à 180° pour reprendre la direction nord vers Dakar
+  { lon: -16.528500, lat: 3.002000, alt: 11400, time: 3210, phase: "RETURN" },
+  { lon: -16.536000, lat: 2.998000, alt: 11400, time: 3214, phase: "RETURN" },
+  { lon: -16.543500, lat: 2.997000, alt: 11400, time: 3218, phase: "RETURN" },
+  { lon: -16.550500, lat: 3.000000, alt: 11400, time: 3222, phase: "RETURN" },
+  { lon: -16.557000, lat: 3.006000, alt: 11400, time: 3226, phase: "RETURN" },
+  { lon: -16.562500, lat: 3.015000, alt: 11400, time: 3230, phase: "RETURN" },
+  { lon: -16.567000, lat: 3.027000, alt: 11400, time: 3234, phase: "RETURN" },
+  { lon: -16.570500, lat: 3.042000, alt: 11400, time: 3238, phase: "RETURN" },
+  { lon: -16.573000, lat: 3.060000, alt: 11400, time: 3242, phase: "RETURN" },
+
+  // Stabilisation cap nord vers Dakar
+  { lon: -16.575000, lat: 3.080000, alt: 11400, time: 3246, phase: "RETURN" },
+  { lon: -16.576500, lat: 3.250000, alt: 11400, time: 3270, phase: "RETURN" },
+  { lon: -16.578000, lat: 3.500000, alt: 11400, time: 3300, phase: "RETURN" },
+  { lon: -16.579500, lat: 3.750000, alt: 11400, time: 3330, phase: "RETURN" },
+  { lon: -16.581000, lat: 4.000000, alt: 11400, time: 3360, phase: "RETURN" },
+  { lon: -16.582500, lat: 4.250000, alt: 11400, time: 3390, phase: "RETURN" },
+  { lon: -16.584000, lat: 4.500000, alt: 11400, time: 3420, phase: "RETURN" },
+  { lon: -16.585500, lat: 4.750000, alt: 11400, time: 3450, phase: "RETURN" },
+  { lon: -16.587000, lat: 5.000000, alt: 11400, time: 3480, phase: "RETURN" },
+  { lon: -16.588500, lat: 5.250000, alt: 11400, time: 3510, phase: "RETURN" },
+  { lon: -16.590000, lat: 5.500000, alt: 11400, time: 3540, phase: "RETURN" },
+
+  // Retour progressif vers Dakar (trajectoire simplifiée - ligne droite vers le nord)
+  { lon: -16.591500, lat: 5.750000, alt: 11400, time: 3570, phase: "RETURN" },
+  { lon: -16.593000, lat: 6.000000, alt: 11400, time: 3600, phase: "RETURN" },
+  { lon: -16.595000, lat: 6.500000, alt: 11400, time: 3650, phase: "RETURN" },
+  { lon: -16.597000, lat: 7.000000, alt: 11400, time: 3700, phase: "RETURN" },
+  { lon: -16.599000, lat: 7.500000, alt: 11400, time: 3750, phase: "RETURN" },
+  { lon: -16.601000, lat: 8.000000, alt: 11400, time: 3800, phase: "RETURN" },
+  { lon: -16.603000, lat: 8.500000, alt: 11400, time: 3850, phase: "RETURN" },
+  { lon: -16.605000, lat: 9.000000, alt: 11400, time: 3900, phase: "RETURN" },
+  { lon: -16.607000, lat: 9.500000, alt: 11400, time: 3950, phase: "RETURN" },
+  { lon: -16.610000, lat: 10.000000, alt: 11400, time: 4000, phase: "RETURN" },
+  { lon: -16.615000, lat: 10.500000, alt: 11400, time: 4050, phase: "RETURN" },
+  { lon: -16.620000, lat: 11.000000, alt: 11400, time: 4100, phase: "RETURN" },
+  { lon: -16.627000, lat: 11.500000, alt: 11400, time: 4150, phase: "RETURN" },
+  { lon: -16.635000, lat: 12.000000, alt: 11400, time: 4200, phase: "RETURN" },
+  { lon: -16.645000, lat: 12.500000, alt: 11400, time: 4250, phase: "RETURN" },
+  { lon: -16.657000, lat: 13.000000, alt: 11400, time: 4300, phase: "RETURN" },
+  { lon: -16.670000, lat: 13.500000, alt: 11400, time: 4350, phase: "RETURN" },
+  { lon: -16.680000, lat: 13.750000, alt: 11400, time: 4375, phase: "RETURN" },
+  { lon: -16.690000, lat: 14.000000, alt: 11200, time: 4400, phase: "RETURN" },
+  { lon: -16.695000, lat: 14.150000, alt: 11000, time: 4425, phase: "RETURN" },
+
+  // Approche finale de Dakar - descente progressive
+  { lon: -16.700000, lat: 14.300000, alt: 10500, time: 4450, phase: "RETURN" },
+  { lon: -16.710000, lat: 14.350000, alt: 10000, time: 4475, phase: "RETURN" },
+  { lon: -16.720000, lat: 14.400000, alt: 9500, time: 4500, phase: "RETURN" },
+  { lon: -16.735000, lat: 14.450000, alt: 9000, time: 4525, phase: "RETURN" },
+  { lon: -16.750000, lat: 14.500000, alt: 8500, time: 4550, phase: "RETURN" },
+  { lon: -16.780000, lat: 14.530000, alt: 8000, time: 4575, phase: "RETURN" },
+  { lon: -16.810000, lat: 14.560000, alt: 7500, time: 4600, phase: "RETURN" },
+  { lon: -16.850000, lat: 14.590000, alt: 7000, time: 4625, phase: "RETURN" },
+  { lon: -16.890000, lat: 14.615000, alt: 6000, time: 4650, phase: "RETURN" },
+  { lon: -16.930000, lat: 14.635000, alt: 5000, time: 4675, phase: "RETURN" },
+  { lon: -16.970000, lat: 14.655000, alt: 4000, time: 4700, phase: "RETURN" },
+  { lon: -17.010000, lat: 14.670000, alt: 3000, time: 4725, phase: "RETURN" },
+  { lon: -17.040000, lat: 14.680000, alt: 2000, time: 4750, phase: "RETURN" },
+  { lon: -17.060000, lat: 14.685000, alt: 1000, time: 4775, phase: "RETURN" },
+
+  // Atterrissage à Dakar (retour à la piste)
+  { lon: -17.072747, lat: 14.686448, alt: 0, time: 4800, phase: "RETURN" },
+];
+
 // Configuration temporelle
 const startTime = Cesium.JulianDate.now();
-const totalMissionTime =
-  MISSION_CONFIG.phaseDurations.pause +
-  MISSION_CONFIG.phaseDurations.taxiing +
-  MISSION_CONFIG.phaseDurations.takeoff +
-  MISSION_CONFIG.phaseDurations.climb +
-  MISSION_CONFIG.phaseDurations.cruise +
-  MISSION_CONFIG.phaseDurations.launch +
-  MISSION_CONFIG.phaseDurations.orbit +
-  MISSION_CONFIG.phaseDurations.deorbit;
+const totalMissionTime = flightData[flightData.length - 1].time;
 
 const stopTime = Cesium.JulianDate.addSeconds(
   startTime,
@@ -295,149 +744,20 @@ viewer.timeline.zoomTo(startTime, stopTime);
 function createCarrierPhase() {
   const carrierPositions = new Cesium.SampledPositionProperty();
 
-  // Calcul de la direction de la piste
-  const runwayHeading = Math.atan2(
-    MISSION_CONFIG.runway.end.lat - MISSION_CONFIG.runway.start.lat,
-    MISSION_CONFIG.runway.end.lon - MISSION_CONFIG.runway.start.lon
-  );
-
-  let currentTime = 0;
-
-  // PHASE 0: PAUSE (Avion à vitesse très faible au début de la piste)
-  const pauseDuration = MISSION_CONFIG.phaseDurations.pause;
-  for (let t = 0; t <= pauseDuration; t += 1) {
-    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
-    const progress = t / pauseDuration;
-
-    // Avance très lentement (5% de la piste pendant la pause)
-    const lon = MISSION_CONFIG.runway.start.lon +
-                (MISSION_CONFIG.runway.end.lon - MISSION_CONFIG.runway.start.lon) * progress * 0.05;
-    const lat = MISSION_CONFIG.runway.start.lat +
-                (MISSION_CONFIG.runway.end.lat - MISSION_CONFIG.runway.start.lat) * progress * 0.05;
-    const altitude = 0;
-
-    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
+  // Créer les positions à partir des données de vol manuelles
+  flightData.forEach(point => {
+    const time = Cesium.JulianDate.addSeconds(startTime, point.time, new Cesium.JulianDate());
+    const position = Cesium.Cartesian3.fromDegrees(point.lon, point.lat, point.alt);
     carrierPositions.addSample(time, position);
-  }
-  currentTime += pauseDuration;
+  });
 
-  // PHASE 1: TAXIING (Roulage au sol sur la piste)
-  const taxiingDuration = MISSION_CONFIG.phaseDurations.taxiing;
-  for (let t = 0; t <= taxiingDuration; t += 1) {
-    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
-    const progress = t / taxiingDuration;
+  // Interpolation Hermite pour un vol fluide
+  carrierPositions.setInterpolationOptions({
+    interpolationDegree: 5,
+    interpolationAlgorithm: Cesium.HermitePolynomialApproximation
+  });
 
-    // Interpolation linéaire entre début et fin de piste
-    const lon = MISSION_CONFIG.runway.start.lon +
-                (MISSION_CONFIG.runway.end.lon - MISSION_CONFIG.runway.start.lon) * progress;
-    const lat = MISSION_CONFIG.runway.start.lat +
-                (MISSION_CONFIG.runway.end.lat - MISSION_CONFIG.runway.start.lat) * progress;
-    const altitude = 0; // Au sol
-
-    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
-    carrierPositions.addSample(time, position);
-  }
-  currentTime += taxiingDuration;
-
-  // PHASE 2: TAKEOFF (Décollage)
-  const takeoffDuration = MISSION_CONFIG.phaseDurations.takeoff;
-  const rotationSpeed = 80; // m/s vitesse de rotation
-  const takeoffAngle = 15; // Angle de décollage en degrés
-
-  for (let t = 0; t <= takeoffDuration; t += 1) {
-    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
-    const progress = t / takeoffDuration;
-
-    // Distance parcourue pendant le décollage (accélération)
-    const distance = progress * 5; // 5 km de distance horizontale
-    const lon = MISSION_CONFIG.runway.end.lon + Math.cos(runwayHeading) * distance * 0.01;
-    const lat = MISSION_CONFIG.runway.end.lat + Math.sin(runwayHeading) * distance * 0.01;
-
-    // Altitude avec courbe de décollage réaliste
-    const altitude = Math.pow(progress, 1.5) * 3000; // Montée progressive jusqu'à 3km
-
-    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
-    carrierPositions.addSample(time, position);
-  }
-  currentTime += takeoffDuration;
-
-  // PHASE 3: CLIMB (Montée vers 12km avec début de virage)
-  const climbDuration = MISSION_CONFIG.phaseDurations.climb;
-  const climbStartLon = MISSION_CONFIG.runway.end.lon + Math.cos(runwayHeading) * 0.05;
-  const climbStartLat = MISSION_CONFIG.runway.end.lat + Math.sin(runwayHeading) * 0.05;
-
-  // Destination finale
-  const targetLon = 1.194030;
-  const targetLat = -13.346754;
-
-  for (let t = 0; t <= climbDuration; t += 2) {
-    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
-    const progress = t / climbDuration;
-
-    // Début du virage progressif vers la destination
-    const turnProgress = Math.pow(progress, 2); // Virage progressif
-    const distance = progress * 30; // 30 km
-
-    // Calcul de la direction vers la cible
-    const deltaLon = targetLon - climbStartLon;
-    const deltaLat = targetLat - climbStartLat;
-    const targetHeading = Math.atan2(deltaLat, deltaLon);
-
-    // Interpolation progressive entre le cap de piste et le cap vers la cible
-    const currentHeading = runwayHeading + (targetHeading - runwayHeading) * turnProgress;
-
-    const lon = climbStartLon + Math.cos(currentHeading) * distance * 0.01;
-    const lat = climbStartLat + Math.sin(currentHeading) * distance * 0.01;
-
-    // Montée progressive de 3km à 12km
-    const altitude = 3000 + progress * (MISSION_CONFIG.carrierAltitude - 3000);
-
-    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
-    carrierPositions.addSample(time, position);
-  }
-  currentTime += climbDuration;
-
-  // PHASE 4: CRUISE (Croisière vers la destination avec courbe de Bézier)
-  const cruiseDuration = MISSION_CONFIG.phaseDurations.cruise;
-  const cruiseStartLon = climbStartLon + Math.cos(runwayHeading + (Math.atan2(targetLat - climbStartLat, targetLon - climbStartLon) - runwayHeading)) * 0.3;
-  const cruiseStartLat = climbStartLat + Math.sin(runwayHeading + (Math.atan2(targetLat - climbStartLat, targetLon - climbStartLon) - runwayHeading)) * 0.3;
-
-  // Points de contrôle pour une courbe de Bézier cubique réaliste
-  const deltaLon = targetLon - cruiseStartLon;
-  const deltaLat = targetLat - cruiseStartLat;
-
-  // Point de contrôle 1: 1/3 du chemin avec légère déviation
-  const cp1Lon = cruiseStartLon + deltaLon * 0.33 - 2;
-  const cp1Lat = cruiseStartLat + deltaLat * 0.33 + 1;
-
-  // Point de contrôle 2: 2/3 du chemin avec légère déviation opposée
-  const cp2Lon = cruiseStartLon + deltaLon * 0.67 - 1;
-  const cp2Lat = cruiseStartLat + deltaLat * 0.67 - 0.5;
-
-  for (let t = 0; t <= cruiseDuration; t += 5) {
-    const time = Cesium.JulianDate.addSeconds(startTime, currentTime + t, new Cesium.JulianDate());
-    const progress = t / cruiseDuration;
-
-    // Courbe de Bézier cubique pour un virage fluide et réaliste
-    const t1 = 1 - progress;
-    const lon = Math.pow(t1, 3) * cruiseStartLon +
-                3 * Math.pow(t1, 2) * progress * cp1Lon +
-                3 * t1 * Math.pow(progress, 2) * cp2Lon +
-                Math.pow(progress, 3) * targetLon;
-
-    const lat = Math.pow(t1, 3) * cruiseStartLat +
-                3 * Math.pow(t1, 2) * progress * cp1Lat +
-                3 * t1 * Math.pow(progress, 2) * cp2Lat +
-                Math.pow(progress, 3) * targetLat;
-
-    const altitude = MISSION_CONFIG.carrierAltitude; // Altitude constante
-
-    const position = Cesium.Cartesian3.fromDegrees(lon, lat, altitude);
-    carrierPositions.addSample(time, position);
-  }
-  
-  const totalCarrierDuration =
-    pauseDuration + taxiingDuration + takeoffDuration + climbDuration + cruiseDuration;
+  const totalCarrierDuration = flightData[flightData.length - 1].time;
 
   const carrier = viewer.entities.add({
     id: "carrier-aircraft",
@@ -474,17 +794,29 @@ function createCarrierPhase() {
     label: {
       text: new Cesium.CallbackProperty(function (time) {
         const currentSeconds = Cesium.JulianDate.secondsDifference(time, startTime);
-        if (currentSeconds <= pauseDuration) {
-          return "⏸️ PAUSE - Préparation au décollage";
-        } else if (currentSeconds <= pauseDuration + taxiingDuration) {
-          return "🛬 TAXIING - Roulage sur piste";
-        } else if (currentSeconds <= pauseDuration + taxiingDuration + takeoffDuration) {
-          return "🛫 TAKEOFF - Décollage";
-        } else if (currentSeconds <= pauseDuration + taxiingDuration + takeoffDuration + climbDuration) {
-          return "⬆️ CLIMB - Montée vers 12km";
-        } else {
-          return "✈️ CRUISE - Croisière à 12km";
+
+        // Trouver la phase actuelle dans flightData
+        let currentPhase = "CRUISE";
+        for (let i = flightData.length - 1; i >= 0; i--) {
+          if (currentSeconds >= flightData[i].time) {
+            currentPhase = flightData[i].phase;
+            break;
+          }
         }
+
+        const phaseLabels = {
+          "PAUSE": "⏸️ PAUSE - Préparation au décollage",
+          "TAXIING": "🛬 TAXIING - Roulage sur piste",
+          "TAKEOFF": "🛫 TAKEOFF - Décollage",
+          "CLIMB": "⬆️ CLIMB - Montée vers 12km",
+          "CRUISE": "✈️ CRUISE - Vers point de largage",
+          "APPROACH": "🎯 APPROACH - Approche finale",
+          "LAUNCH": "🚀 LAUNCH - Largage fusée",
+          "EVASIVE": "↩️ EVASIVE - Manœuvre évasive",
+          "RETURN": "🏠 RETURN - Retour Dakar"
+        };
+
+        return phaseLabels[currentPhase] || "✈️ EN VOL";
       }, false),
       font: "14pt monospace",
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -509,6 +841,371 @@ function createCarrierPhase() {
 }
 
 // ============================================
+// PHASE 2: FALCON 9 - LANCEMENT DEPUIS L'AVION
+// ============================================
+
+function createFalcon9Launch() {
+  const falcon9Stage1Positions = new Cesium.SampledPositionProperty();
+  const stage2Positions = new Cesium.SampledPositionProperty();
+
+  // Point de largage : (-16.493000, 3.336000) à 12000m au temps 3164s
+  const launchTime = 3164;
+  const launchLon = -16.493000;
+  const launchLat = 3.336000;
+  const launchAlt = 12000;
+
+  // Point de déploiement satellite (coordonnées exactes GMAT)
+  const deployLon = 161.236329;
+  const deployLat = 0.150964;
+  const deployAlt = 679860; // 679.86 km d'altitude (altitude GMAT exacte)
+
+  // Durées réalistes
+  const stage1Duration = 180; // 3 minutes pour le premier étage (plus long pour plus d'altitude)
+  const stage2Duration = 540; // 9 minutes pour le second étage jusqu'au déploiement
+
+  // Point de séparation Stage 1/Stage 2 - ALTITUDE AUGMENTÉE
+  const sepLon = launchLon + 18;
+  const sepLat = launchLat + 0.8;
+  const sepAlt = 120000; // 120 km
+
+  // ========================================
+  // TRAJECTOIRE FALCON 9 COMPLET (STAGE 1)
+  // ========================================
+
+  // PHASE 1: Largage et chute libre initiale (0-3s)
+  for (let t = 0; t <= 3; t += 0.5) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + t, new Cesium.JulianDate());
+    const alt = launchAlt - (t * t * 5); // Chute libre initiale
+    const position = Cesium.Cartesian3.fromDegrees(launchLon, launchLat, alt);
+    falcon9Stage1Positions.addSample(time, position);
+  }
+
+  // PHASE 2: Allumage et montée verticale (3-40s)
+  for (let t = 3; t <= 40; t += 1) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + t, new Cesium.JulianDate());
+    const progress = (t - 3) / 37;
+
+    const alt = launchAlt + (progress * progress * 35000); // Jusqu'à ~35km
+    const lon = launchLon + (progress * 0.8);
+    const lat = launchLat + (progress * 0.15);
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    falcon9Stage1Positions.addSample(time, position);
+  }
+
+  // PHASE 3: Gravity turn et accélération Stage 1 (40-180s)
+  for (let t = 40; t <= 180; t += 2) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + t, new Cesium.JulianDate());
+    const progress = (t - 40) / 140;
+
+    const alt = 35000 + (progress * progress * 85000); // Jusqu'à ~120km
+    const lon = launchLon + 0.8 + (progress * 17.2);
+    const lat = launchLat + 0.15 + (progress * progress * 0.65);
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    falcon9Stage1Positions.addSample(time, position);
+  }
+
+  falcon9Stage1Positions.setInterpolationOptions({
+    interpolationDegree: 3,
+    interpolationAlgorithm: Cesium.LagrangePolynomialApproximation
+  });
+
+  // ========================================
+  // TRAJECTOIRE STAGE 2 JUSQU'AU DÉPLOIEMENT
+  // ========================================
+
+  // PHASE 4: Coast phase après séparation (0-10s)
+  for (let t = 0; t <= 10; t += 1) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + 180 + t, new Cesium.JulianDate());
+    const progress = t / 10;
+
+    const alt = sepAlt + (progress * 10000); // ~130km
+    const lon = sepLon + (progress * 3);
+    const lat = sepLat + (progress * 0.15);
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    stage2Positions.addSample(time, position);
+  }
+
+  // PHASE 5: Allumage Stage 2 et montée orbitale (10-280s)
+  for (let t = 10; t <= 280; t += 5) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + 180 + t, new Cesium.JulianDate());
+    const progress = (t - 10) / 270;
+
+    // Montée exponentielle vers l'orbite
+    const alt = 130000 + (Math.pow(progress, 0.65) * 320000); // Jusqu'à ~450km
+
+    // Grande courbe vers l'est pour rejoindre le point de déploiement
+    const lonDelta = deployLon - (sepLon + 3);
+    const latDelta = deployLat - (sepLat + 0.15);
+
+    const lon = sepLon + 3 + (progress * 0.35 * lonDelta);
+    const lat = sepLat + 0.15 + (Math.sin(progress * Math.PI) * 2.5);
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    stage2Positions.addSample(time, position);
+  }
+
+  // PHASE 6: Circularisation et approche finale (280-540s)
+  for (let t = 280; t <= 540; t += 5) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + 180 + t, new Cesium.JulianDate());
+    const progress = (t - 280) / 260;
+
+    // Montée finale vers altitude orbitale exacte
+    const alt = 450000 + (progress * (deployAlt - 450000)); // Jusqu'à 679.86km
+
+    // Approche directe du point de déploiement
+    const lonStart = sepLon + 3 + (0.35 * (deployLon - (sepLon + 3)));
+    const latStart = sepLat + 0.15;
+
+    const lon = lonStart + (progress * (deployLon - lonStart));
+    const lat = latStart + (progress * (deployLat - latStart));
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    stage2Positions.addSample(time, position);
+  }
+
+  // Point final exact de déploiement (T+3164+180+540 = T+3884s)
+  const deployTime = Cesium.JulianDate.addSeconds(startTime, launchTime + 180 + 540, new Cesium.JulianDate());
+  stage2Positions.addSample(deployTime, Cesium.Cartesian3.fromDegrees(deployLon, deployLat, deployAlt));
+
+  // ========================================
+  // PHASE 7: DÉSORBITAGE DU STAGE 2 (540-1200s)
+  // ========================================
+  // Manœuvre de désorbitage: freinage rétrograde pour descendre l'orbite
+  const deorbitDuration = 660; // 11 minutes pour rentrer dans l'atmosphère
+
+  for (let t = 540; t <= 1200; t += 10) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + 180 + t, new Cesium.JulianDate());
+    const progress = (t - 540) / deorbitDuration;
+
+    // Le second étage continue sur l'orbite puis commence à descendre
+    if (t <= 600) {
+      // Phase de maintien orbital (60s) - dérive orbitale lente
+      const orbitalProgress = (t - 540) / 60;
+      const lon = deployLon + (orbitalProgress * 5); // Dérive vers l'est
+      const lat = deployLat + (Math.sin(orbitalProgress * Math.PI) * 0.3);
+      const alt = deployAlt - (orbitalProgress * 5000); // Légère baisse
+
+      const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+      stage2Positions.addSample(time, position);
+    } else {
+      // Phase de désorbitage actif (600-1200s)
+      const deorbitProgress = (t - 600) / 600;
+
+      // Descente exponentielle vers l'atmosphère
+      const alt = (deployAlt - 5000) * (1 - Math.pow(deorbitProgress, 0.4));
+
+      // Trajectoire vers le sud-ouest (zone de rentrée océan Pacifique)
+      const lon = deployLon + 5 + (deorbitProgress * 25);
+      const lat = deployLat - (deorbitProgress * 35); // Descend vers le sud
+
+      const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+      stage2Positions.addSample(time, position);
+    }
+  }
+
+  stage2Positions.setInterpolationOptions({
+    interpolationDegree: 3,
+    interpolationAlgorithm: Cesium.LagrangePolynomialApproximation
+  });
+
+  // ========================================
+  // ENTITÉ FALCON 9 COMPLET (0-180s)
+  // ========================================
+  viewer.entities.add({
+    id: "falcon9-complete",
+    name: "Falcon 9 Complete",
+    availability: new Cesium.TimeIntervalCollection([
+      new Cesium.TimeInterval({
+        start: Cesium.JulianDate.addSeconds(startTime, launchTime, new Cesium.JulianDate()),
+        stop: Cesium.JulianDate.addSeconds(startTime, launchTime + 180, new Cesium.JulianDate()),
+      }),
+    ]),
+    position: falcon9Stage1Positions,
+    orientation: new Cesium.CallbackProperty(function (time, result) {
+      const velocity = new Cesium.VelocityOrientationProperty(falcon9Stage1Positions).getValue(time, result);
+      if (velocity) {
+        // Rotation de 90° autour de l'axe Y pour aligner la fusée avec la trajectoire
+        const correction = Cesium.Quaternion.fromAxisAngle(
+          Cesium.Cartesian3.UNIT_Y,
+          Cesium.Math.toRadians(90)
+        );
+        return Cesium.Quaternion.multiply(velocity, correction, result);
+      }
+      return result;
+    }, false),
+    model: {
+      uri: "./falcon_9_block_4.5.glb",
+      minimumPixelSize: 32,
+      maximumScale: 50000,
+      scale: 3000,
+    },
+    label: {
+      text: new Cesium.CallbackProperty(function (time) {
+        const currentSeconds = Cesium.JulianDate.secondsDifference(time, startTime) - launchTime;
+        if (currentSeconds <= 3) return "🚀 LARGAGE";
+        if (currentSeconds <= 40) return "🚀 MONTÉE VERTICALE";
+        return "🚀 GRAVITY TURN - STAGE 1";
+      }, false),
+      font: "14pt monospace",
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      outlineWidth: 2,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      pixelOffset: new Cesium.Cartesian2(0, -60),
+      fillColor: Cesium.Color.ORANGE,
+      showBackground: true,
+      backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
+    },
+    path: {
+      resolution: 1,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.3,
+        color: Cesium.Color.ORANGE,
+      }),
+      width: 5,
+      trailTime: 360,
+    },
+  });
+
+  // ========================================
+  // ENTITÉ STAGE 1 EN CHUTE (180-360s)
+  // ========================================
+  const stage1FallPositions = new Cesium.SampledPositionProperty();
+
+  for (let t = 0; t <= 180; t += 5) {
+    const time = Cesium.JulianDate.addSeconds(startTime, launchTime + 180 + t, new Cesium.JulianDate());
+    const progress = t / 180;
+
+    // Chute parabolique vers l'océan
+    const alt = sepAlt * (1 - Math.pow(progress, 0.55));
+    const lon = sepLon + (progress * 6);
+    const lat = sepLat + (progress * progress * 0.4);
+
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    stage1FallPositions.addSample(time, position);
+  }
+
+  viewer.entities.add({
+    id: "falcon9-stage1-fall",
+    name: "Falcon 9 Stage 1 (Falling)",
+    availability: new Cesium.TimeIntervalCollection([
+      new Cesium.TimeInterval({
+        start: Cesium.JulianDate.addSeconds(startTime, launchTime + 180, new Cesium.JulianDate()),
+        stop: Cesium.JulianDate.addSeconds(startTime, launchTime + 360, new Cesium.JulianDate()),
+      }),
+    ]),
+    position: stage1FallPositions,
+    orientation: new Cesium.CallbackProperty(function (time, result) {
+      const velocity = new Cesium.VelocityOrientationProperty(stage1FallPositions).getValue(time, result);
+      if (velocity) {
+        // Rotation de 90° autour de l'axe Y pour aligner avec la trajectoire
+        const correction = Cesium.Quaternion.fromAxisAngle(
+          Cesium.Cartesian3.UNIT_Y,
+          Cesium.Math.toRadians(90)
+        );
+        return Cesium.Quaternion.multiply(velocity, correction, result);
+      }
+      return result;
+    }, false),
+    model: {
+      uri: "./f9_stage_1_model.glb",
+      minimumPixelSize: 16,
+      maximumScale: 30000,
+      scale: 2500,
+    },
+    label: {
+      text: "💥 STAGE 1 - CHUTE",
+      font: "12pt monospace",
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      outlineWidth: 2,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      pixelOffset: new Cesium.Cartesian2(0, -40),
+      fillColor: Cesium.Color.RED,
+      showBackground: true,
+      backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
+    },
+    path: {
+      resolution: 1,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.2,
+        color: Cesium.Color.RED,
+      }),
+      width: 3,
+      trailTime: 180,
+    },
+  });
+
+  // ========================================
+  // ENTITÉ STAGE 2 (180-1380s) - Inclut désorbitage
+  // ========================================
+  viewer.entities.add({
+    id: "falcon9-stage2",
+    name: "Falcon 9 Stage 2",
+    availability: new Cesium.TimeIntervalCollection([
+      new Cesium.TimeInterval({
+        start: Cesium.JulianDate.addSeconds(startTime, launchTime + 180, new Cesium.JulianDate()),
+        stop: Cesium.JulianDate.addSeconds(startTime, launchTime + 1380, new Cesium.JulianDate()),
+      }),
+    ]),
+    position: stage2Positions,
+    orientation: new Cesium.CallbackProperty(function (time, result) {
+      const velocity = new Cesium.VelocityOrientationProperty(stage2Positions).getValue(time, result);
+      if (velocity) {
+        // Rotation de 90° autour de l'axe Y pour aligner avec la trajectoire
+        const correction = Cesium.Quaternion.fromAxisAngle(
+          Cesium.Cartesian3.UNIT_Y,
+          Cesium.Math.toRadians(90)
+        );
+        return Cesium.Quaternion.multiply(velocity, correction, result);
+      }
+      return result;
+    }, false),
+    model: {
+      uri: "./falcon_9_second_stage.glb",
+      minimumPixelSize: 24,
+      maximumScale: 40000,
+      scale: 2500,
+    },
+    label: {
+      text: new Cesium.CallbackProperty(function (time) {
+        const currentSeconds = Cesium.JulianDate.secondsDifference(time, startTime) - (launchTime + 180);
+        if (currentSeconds <= 10) return "💥 SÉPARATION - COAST";
+        if (currentSeconds <= 280) return "🚀 STAGE 2 - MONTÉE";
+        if (currentSeconds <= 540) return "🛰️ CIRCULARISATION";
+        if (currentSeconds <= 600) return "🎯 DÉPLOIEMENT SATELLITE";
+        if (currentSeconds <= 1200) return "🔥 DÉSORBITAGE";
+        return "🌊 RENTRÉE ATMOSPHÉRIQUE";
+      }, false),
+      font: "14pt monospace",
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      outlineWidth: 2,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      pixelOffset: new Cesium.Cartesian2(0, -50),
+      fillColor: new Cesium.CallbackProperty(function (time) {
+        const currentSeconds = Cesium.JulianDate.secondsDifference(time, startTime) - (launchTime + 180);
+        if (currentSeconds <= 600) return Cesium.Color.CYAN;
+        return Cesium.Color.ORANGERED; // Couleur rouge-orange pour le désorbitage
+      }, false),
+      showBackground: true,
+      backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
+    },
+    path: {
+      resolution: 1,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.4,
+        color: Cesium.Color.CYAN,
+      }),
+      width: 5,
+      trailTime: 600,
+    },
+  });
+
+  return stage2Positions;
+}
+
+// ============================================
 // CHARGEMENT DES DONNÉES GMAT
 // ============================================
 
@@ -526,8 +1223,10 @@ async function loadGMATTrajectories() {
     const satelliteLines = satelliteData.split('\n').slice(1); // Skip header
     const satellitePositions = new Cesium.SampledPositionProperty();
 
-    // Utiliser le même temps de départ que la simulation Boeing
-    const gmatStartTime = startTime.clone();
+    // Synchroniser avec le déploiement du satellite par le Stage 2
+    // Largage Falcon 9: T+3164s, Stage 1: 180s, Stage 2: 540s → Déploiement: T+3884s
+    const satelliteDeploymentTime = 3884; // T+3164+180+540 = T+3884s
+    const gmatStartTime = Cesium.JulianDate.addSeconds(startTime, satelliteDeploymentTime, new Cesium.JulianDate());
 
     let count = 0;
     let minElapsed = Infinity;
@@ -670,64 +1369,15 @@ async function loadGMATTrajectories() {
             color: Cesium.Color.LIME,
           }),
           width: 6,
-          leadTime: 3600,
-          trailTime: 3600,
+          show: true,
         },
       });
 
       console.log('✅ Trajectoire GMAT satellite chargée avec succès!');
 
-      // Afficher l'upperstage si disponible
+      // L'upperstage GMAT n'est plus affiché - on utilise notre Stage 2 simulé
       if (upperstageCount > 0) {
-        viewer.entities.add({
-          id: 'gmat-upperstage',
-          name: 'Falcon 9 Second Stage (GMAT)',
-          availability: new Cesium.TimeIntervalCollection([
-            new Cesium.TimeInterval({
-              start: firstTime,
-              stop: lastTime,
-            }),
-          ]),
-          position: upperstagePositions,
-          orientation: new Cesium.CallbackProperty(function (time, result) {
-            const velocity = new Cesium.VelocityOrientationProperty(upperstagePositions).getValue(time);
-            if (velocity) {
-              // Rotation de 90 degrés autour de l'axe Z pour aligner avec la trajectoire
-              const rotationY = Cesium.Quaternion.fromAxisAngle(
-                Cesium.Cartesian3.UNIT_Y,
-                Cesium.Math.toRadians(90)
-              );
-              return Cesium.Quaternion.multiply(velocity, rotationY, result);
-            }
-            return result;
-          }, false),
-          model: {
-            uri: './falcon_9_second_stage.glb',
-            minimumPixelSize: 64,
-            maximumScale: 20000,
-            scale: 2000,
-          },
-          label: {
-            text: '🚀 FALCON 9 STAGE 2',
-            font: '14pt monospace',
-            fillColor: Cesium.Color.ORANGE,
-            showBackground: true,
-            backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
-            pixelOffset: new Cesium.Cartesian2(0, -60),
-          },
-          path: {
-            resolution: 1,
-            material: new Cesium.PolylineGlowMaterialProperty({
-              glowPower: 0.4,
-              color: Cesium.Color.ORANGE,
-            }),
-            width: 5,
-            leadTime: 3600,
-            trailTime: 3600,
-          },
-        });
-
-        console.log('✅ Trajectoire GMAT Falcon 9 second stage chargée avec succès!');
+        console.log(`📊 ${upperstageCount} points upperstage GMAT chargés (non affichés - utilisation du Stage 2 simulé)`);
       }
 
       // Zoomer sur le satellite après 2 secondes
@@ -1067,8 +1717,11 @@ function createDeorbitPhase(orbitFinalPosition) {
 // EXÉCUTION DE LA SIMULATION COMPLÈTE
 // ============================================
 
-// Créer uniquement la phase Boeing 747
+// Créer la phase Boeing 747
 const carrierPath = createCarrierPhase();
+
+// Créer la trajectoire Falcon 9
+const falcon9Path = createFalcon9Launch();
 
 // Ajouter les satellites réels
 addRealSatellites();
@@ -1102,12 +1755,26 @@ if (aircraft) {
 
 // Afficher les informations de mission
 console.log("=".repeat(60));
-console.log("✈️ BOEING 747 FLIGHT SIMULATOR");
+console.log("🚀 MISSION AFREELEO - AIR-LAUNCH SIMULATION");
 console.log("=".repeat(60));
-console.log(`📍 Départ: Dakar Airport (${MISSION_CONFIG.runway.start.lat}°N, ${MISSION_CONFIG.runway.start.lon}°E)`);
-console.log(`🎯 Destination: 1.194030°E, 13.346754°S (Afrique centrale)`);
-console.log(`🌍 ${TLE_DATA.length} satellites réels en orbite ajoutés`);
+console.log("PHASE 1: AVION PORTEUR A380");
+console.log(`  📍 Départ: Dakar Airport (${MISSION_CONFIG.runway.start.lat}°N, ${MISSION_CONFIG.runway.start.lon}°E)`);
+console.log(`  🎯 Point de largage: Golfe de Guinée (-16.493°E, 3.336°N) à 12km`);
+console.log(`  ⏱️  Temps jusqu'au largage: 3164s (52min 44s)`);
+console.log("");
+console.log("PHASE 2: LANCEMENT FALCON 9");
+console.log(`  🚀 Largage fusée: T+3164s`);
+console.log(`  💥 Séparation Stage 1: T+3344s (180s après largage) à ~120km`);
+console.log(`  🛰️ Déploiement satellite: T+3884s (720s après largage) à 679.86km`);
+console.log(`  📍 Coordonnées déploiement: 161.236°E, 0.151°N`);
+console.log(`  🔥 Désorbitage Stage 2: T+3944-4544s (rentrée atmosphérique)`);
+console.log(`  ⏱️  Durée totale mission Falcon 9: 1380s (23min)`);
+console.log("");
+console.log("DONNÉES GMAT:");
+console.log(`  🌍 ${TLE_DATA.length} satellites réels en orbite ajoutés`);
+console.log(`  📊 Trajectoires GMAT satellite + upperstage chargées`);
 console.log("=".repeat(60));
 console.log("▶️  Appuyez sur PLAY pour démarrer la simulation");
-console.log("⏸️  Ajustez la vitesse avec le multiplicateur");
+console.log("⏸️  Ajustez la vitesse avec le multiplicateur (recommandé: 10x)");
+console.log("🎥 La caméra suit l'avion au départ");
 console.log("=".repeat(60));
