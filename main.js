@@ -1380,23 +1380,7 @@ async function loadGMATTrajectories() {
         console.log(`📊 ${upperstageCount} points upperstage GMAT chargés (non affichés - utilisation du Stage 2 simulé)`);
       }
 
-      // Zoomer sur le satellite après 2 secondes
-      setTimeout(() => {
-        // Tester avec le premier temps disponible
-        const testPos = satellitePositions.getValue(firstTime);
-        console.log('📍 Position au premier temps:', testPos);
-
-        if (testPos) {
-          viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(161.2363, 0.1509, 700000),
-            duration: 3,
-            complete: () => {
-              console.log('📍 Caméra positionnée sur le satellite GMAT');
-              console.log('💡 Le satellite apparaîtra quand tu démarres la simulation');
-            }
-          });
-        }
-      }, 2000);
+      // Le zoom automatique est désactivé - le suivi automatique de caméra gère les vues
     } else {
       console.error('❌ Aucun point de trajectoire chargé!');
     }
@@ -1729,25 +1713,83 @@ addRealSatellites();
 // Charger les trajectoires GMAT
 loadGMATTrajectories();
 
-// Caméra libre - tu peux la bouger comme tu veux
-const aircraft = viewer.entities.getById("carrier-aircraft");
+// ============================================
+// SYSTÈME DE SUIVI AUTOMATIQUE DE LA CAMÉRA
+// ============================================
 
+let currentTrackedEntity = null;
+let cameraMode = 'auto'; // 'auto' ou 'free'
+
+function updateCameraTracking() {
+  if (cameraMode !== 'auto') return;
+
+  const currentTime = viewer.clock.currentTime;
+  const currentSeconds = Cesium.JulianDate.secondsDifference(currentTime, startTime);
+
+  let targetEntity = null;
+
+  // PHASE 1: Avion porteur (0s - 3164s)
+  if (currentSeconds < 3164) {
+    targetEntity = viewer.entities.getById("carrier-aircraft");
+  }
+  // PHASE 2: Falcon 9 complet (3164s - 3344s)
+  else if (currentSeconds >= 3164 && currentSeconds < 3344) {
+    targetEntity = viewer.entities.getById("falcon9-complete");
+  }
+  // PHASE 3: Stage 2 en montée (3344s - 3884s)
+  else if (currentSeconds >= 3344 && currentSeconds < 3884) {
+    targetEntity = viewer.entities.getById("falcon9-stage2");
+  }
+  // PHASE 4: Déploiement satellite (3884s - 3944s)
+  else if (currentSeconds >= 3884 && currentSeconds < 3944) {
+    targetEntity = viewer.entities.getById("falcon9-stage2");
+  }
+  // PHASE 5: Satellite en orbite (3944s+)
+  else if (currentSeconds >= 3944) {
+    targetEntity = viewer.entities.getById("gmat-satellite");
+  }
+
+  // Appliquer le suivi si l'entité cible a changé
+  if (targetEntity && targetEntity !== currentTrackedEntity) {
+    currentTrackedEntity = targetEntity;
+
+    // Utiliser trackedEntity sans forcer lookAt - laisse l'utilisateur contrôler le zoom
+    viewer.trackedEntity = targetEntity;
+
+    console.log(`🎥 Caméra suit: ${targetEntity.name}`);
+  }
+}
+
+// Mettre à jour le suivi de la caméra à chaque tick de l'horloge
+viewer.clock.onTick.addEventListener(updateCameraTracking);
+
+// Permettre à l'utilisateur de basculer entre auto et free
+viewer.screenSpaceEventHandler.setInputAction(function() {
+  if (cameraMode === 'auto') {
+    cameraMode = 'free';
+    viewer.trackedEntity = undefined;
+    currentTrackedEntity = null;
+    console.log("🎥 Mode caméra: LIBRE (appuyez sur C pour réactiver le suivi automatique)");
+  } else {
+    cameraMode = 'auto';
+    updateCameraTracking();
+    console.log("🎥 Mode caméra: AUTOMATIQUE");
+  }
+}, Cesium.ScreenSpaceEventType.MIDDLE_CLICK);
+
+// Position initiale de la caméra sur l'avion
+const aircraft = viewer.entities.getById("carrier-aircraft");
 if (aircraft) {
-  // Positionner la caméra initiale derrière l'avion
   setTimeout(function() {
-    const position = aircraft.position.getValue(viewer.clock.currentTime);
-    if (position) {
-      viewer.camera.lookAt(
-        position,
-        new Cesium.HeadingPitchRange(
-          0,
-          Cesium.Math.toRadians(-20),
-          500
-        )
-      );
-      // Libérer la caméra après le positionnement initial
-      viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-    }
+    // Suivre l'avion sans forcer le zoom
+    viewer.trackedEntity = aircraft;
+    currentTrackedEntity = aircraft;
+
+    // Dézoomer un peu pour avoir une meilleure vue
+    viewer.zoomOut(5000);
+
+    console.log("🎥 Caméra suit: Avion Porteur A380");
+    console.log("💡 Utilisez la molette pour zoomer/dézoomer");
   }, 100);
 } else {
   console.error("❌ Impossible de trouver l'avion carrier-aircraft");
@@ -1776,5 +1818,13 @@ console.log(`  📊 Trajectoires GMAT satellite + upperstage chargées`);
 console.log("=".repeat(60));
 console.log("▶️  Appuyez sur PLAY pour démarrer la simulation");
 console.log("⏸️  Ajustez la vitesse avec le multiplicateur (recommandé: 10x)");
-console.log("🎥 La caméra suit l'avion au départ");
+console.log("");
+console.log("🎥 CONTRÔLES CAMÉRA:");
+console.log("  • Suivi automatique des phases activé");
+console.log("  • Clic molette: Basculer entre auto/libre");
+console.log("  • Phase 1 (0-3164s): Suit l'avion A380");
+console.log("  • Phase 2 (3164-3344s): Suit Falcon 9 Stage 1");
+console.log("  • Phase 3 (3344-3884s): Suit Falcon 9 Stage 2");
+console.log("  • Phase 4 (3884-3944s): Déploiement satellite");
+console.log("  • Phase 5 (3944s+): Suit le satellite en orbite");
 console.log("=".repeat(60));
